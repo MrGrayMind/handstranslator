@@ -99,6 +99,7 @@ export default function App() {
   const fetchUserLimits = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
+      console.log(data)
       if (!error && data) {
         setCanUse(data.can_use ?? true)
         setLimitReason(data.reason ?? '')
