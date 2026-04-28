@@ -183,6 +183,27 @@ export default function App() {
 
   // ── Sequence mode: manual capture ──
   const handleSequenceCapture = () => {
+    if (!user) {
+      setAuthModalOpen(true)
+      return
+    }
+    if (!limits) {
+      alert('Cargando límites...')
+      return
+    }
+    if (!limits.can_use) {
+      alert(limits.reason || 'No puedes usar el servicio en este momento')
+      return
+    }
+
+    const maxFrames = limits.limits.max_frames || 10
+
+    // 🛠️ SOLUCIÓN: Verificamos si ya llegamos al límite de frames
+    if (frames.length >= maxFrames) {
+      alert(`Has alcanzado el límite máximo de ${maxFrames} frames permitidos.`)
+      return
+    }
+
     captureFrame()
   }
 
