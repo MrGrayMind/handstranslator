@@ -98,7 +98,7 @@ export default function App() {
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
       console.log("RAW:", data, error)
-  
+
       if (error || !data) {
         setLimits({
           can_use: false,
@@ -107,12 +107,14 @@ export default function App() {
         })
         return
       }
-  
-      setLimits(data)
-  
+
+      // 🛠️ SOLUCIÓN: Verificamos si data es un string. Si lo es, lo parseamos a JSON.
+      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+      setLimits(parsedData);
+
     } catch (err) {
       console.error(err)
-  
+
       setLimits({
         can_use: true,
         reason: 'exception',
@@ -194,7 +196,7 @@ export default function App() {
       alert('Cargando límites...')
       return
     }
-    
+
     if (!limits.can_use) {
       alert(limits.reason || 'No puedes usar el servicio en este momento')
       return
@@ -212,6 +214,9 @@ export default function App() {
     // Countdown
     setCaptureCountdown(maxDuration)
 
+    // 🛠️ SOLUCIÓN: Declaramos intervalMs dividiendo el tiempo total entre los frames
+    const intervalMs = (maxDuration / maxFrames) * 1000
+
     captureIntervalRef.current = setInterval(() => {
       captureFrame()
       frameCount++
@@ -219,7 +224,7 @@ export default function App() {
       if (frameCount >= maxFrames) {
         stopCapture()
       }
-    }, intervalMs)
+    }, intervalMs) // <--- Ahora sí existe
   }
 
   const stopCapture = () => {
