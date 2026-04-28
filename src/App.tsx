@@ -300,24 +300,28 @@ export default function App() {
     setResult(null)
 
     try {
-      // Upload each frame to Supabase Storage
-      for (let i = 0; i < frames.length; i++) {
-        const response = await fetch(frames[i])
+      // 🛠️ MEJORA 1: Creamos un arreglo de Promesas para subir en paralelo
+      const uploadPromises = frames.map(async (frame, index) => {
+        const response = await fetch(frame)
         const blob = await response.blob()
 
         const { error: uploadError } = await supabase.storage
           .from('frames')
-          .upload(`${user.id}/frame${i + 1}.jpg`, blob, {
+          .upload(`${user.id}/frame${index + 1}.jpg`, blob, {
             upsert: true,
             contentType: 'image/jpeg',
           })
 
+        // 🛠️ MEJORA 2: Si un frame falla, lanzamos un error para detener todo
         if (uploadError) {
-          console.error('Error uploading frame:', uploadError)
+          throw new Error(`Fallo al subir el frame ${index + 1}: ${uploadError.message}`)
         }
-      }
+      })
 
-      // Call the translate edge function
+      // Esperamos a que TODAS las imágenes se terminen de subir al mismo tiempo
+      await Promise.all(uploadPromises)
+
+      // Una vez que sabemos que todas subieron con éxito, llamamos a la función
       const { data, error } = await supabase.functions.invoke('translate', {
         body: {
           userId: user.id,
@@ -331,9 +335,10 @@ export default function App() {
       } else if (data) {
         setResult(data)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error processing:', err)
-      alert('Error al procesar los frames')
+      // Mostramos el mensaje exacto si falló la subida
+      alert(err.message || 'Error al procesar los frames')
     } finally {
       setProcessing(false)
     }
