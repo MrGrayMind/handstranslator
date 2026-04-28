@@ -89,6 +89,7 @@ export default function App() {
   // ════════════════════════════════════════════
   useEffect(() => {
     if (user) {
+      console.log("asdasd")
       fetchUserLimits()
     } else {
       console.log("sin usuario")
