@@ -56,7 +56,7 @@ export default function App() {
     max_frames: 0,
     max_duration_s: 0,
   })
-  const [canUse, setCanUse] = useState(true)
+  const [canUse, setCanUse] = useState(false)
   const [limitReason, setLimitReason] = useState('')
   const [limitsLoaded, setLimitsLoaded] = useState(false)
 
