@@ -99,14 +99,22 @@ export default function App() {
   const fetchUserLimits = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
-      console.log(data)
-      if (!error && data) {
-        setCanUse(data.can_use ?? true)
-        setLimitReason(data.reason ?? '')
-        setUserLimits(
-          data.limits ?? { max_frames: 0, max_duration_s: 0 }
-        )
+      console.log("RAW:", data, error)
+      if (error) {
+        console.error(error)
+        return
       }
+      if (!data) {
+        console.warn("No data")
+        return
+      }
+      setCanUse(Boolean(data.can_use))
+      setLimitReason(data.reason || '')
+      setUserLimits({
+        max_frames: data.limits?.max_frames ?? 0,
+        max_duration_s: data.limits?.max_duration_s ?? 0
+      })
+  
     } catch (err) {
       console.error('Error fetching user limits:', err)
     } finally {
