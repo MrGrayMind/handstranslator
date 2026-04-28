@@ -59,6 +59,11 @@ export default function App() {
   const [canUse, setCanUse] = useState(false)
   const [limitReason, setLimitReason] = useState('')
   const [limitsLoaded, setLimitsLoaded] = useState(false)
+  const [limits, setLimits] = useState<null | {
+  can_use: boolean
+  reason: string
+  limits: UserLimits
+}>(null)
 
   // ── Refs ──
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -127,8 +132,7 @@ export default function App() {
 
       return
     }
-
-    // ✅ caso correcto
+    setLimits(data)
     setCanUse(Boolean(data.can_use))
     setLimitReason(data.reason || '')
     setUserLimits({
@@ -148,7 +152,6 @@ export default function App() {
     })
 
   } finally {
-    // ✅ SIEMPRE se ejecuta
     setLimitsLoaded(true)
   }
 }
@@ -468,9 +471,9 @@ export default function App() {
           </div>
 
           {/* User limits info */}
-          {user && limitsLoaded && (
+          {user && limits && (
             <div className="flex items-center gap-2 text-xs">
-              {canUse ? (
+              {limits.can_use ? (
                 <>
                   <ShieldCheck size={14} className="text-green-400" />
                   <span className="text-gray-400">
