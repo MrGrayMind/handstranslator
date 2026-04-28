@@ -190,8 +190,13 @@ export default function App() {
       setAuthModalOpen(true)
       return
     }
-    if (!limits?.can_use) {
-      alert(limits?.reason || 'No puedes usar el servicio en este momento')
+    if (!limits) {
+      alert('Cargando límites...')
+      return
+    }
+    
+    if (!limits.can_use) {
+      alert(limits.reason || 'No puedes usar el servicio en este momento')
       return
     }
     if (!cameraOn) {
@@ -205,7 +210,7 @@ export default function App() {
     let frameCount = 0
 
     // Calculate interval to capture max_frames evenly over max_duration
-    const intervalMs = (maxDuration * 1000) / maxFrames
+    const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
 
     // Countdown
     setCaptureCountdown(maxDuration)
