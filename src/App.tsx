@@ -206,6 +206,8 @@ export default function App() {
       return
     }
 
+    clearFrames()
+    
     setIsCapturing(true)
     const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
     const maxDuration = limits?.limits.max_duration_s || 5
@@ -250,6 +252,17 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [isCapturing, captureCountdown])
 
+  // ════════════════════════════════════════════
+  //  CHANGE MODE
+  // ════════════════════════════════════════════
+  const handleModeChange = (newMode: Mode) => {
+    if (mode !== newMode) {
+      setMode(newMode)
+      clearFrames()
+      if (isCapturing) stopCapture() 
+    }
+  }
+  
   // ════════════════════════════════════════════
   //  PROCESS FRAMES
   // ════════════════════════════════════════════
@@ -422,7 +435,7 @@ export default function App() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex bg-gray-900 rounded-xl p-1.5 border border-gray-800">
             <button
-              onClick={() => setMode('sequence')}
+              onClick={() => handleModeChange('sequence')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 mode === 'sequence'
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
@@ -433,7 +446,7 @@ export default function App() {
               Secuencia de señas
             </button>
             <button
-              onClick={() => setMode('video')}
+              onClick={() => handleModeChange('video')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 mode === 'video'
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
