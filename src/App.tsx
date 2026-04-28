@@ -455,7 +455,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <AlertTriangle size={14} className="text-yellow-400" />
+                  {/*<AlertTriangle size={14} className="text-yellow-400" />*/}
                   <span className="text-yellow-400">{limits.reason}</span>
                 </>
               )}
