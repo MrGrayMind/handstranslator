@@ -91,13 +91,14 @@ export default function App() {
     if (user) {
       fetchUserLimits()
     } else {
+      console.log("sin usuario")
       setLimitsLoaded(false)
       setCanUse(true)
     }
   }, [user])
 
   const fetchUserLimits = async () => {
-    console.log(1)
+    console.log("entro")
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
       console.log(data)
