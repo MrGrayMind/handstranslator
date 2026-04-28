@@ -90,7 +90,7 @@ export default function App() {
   useEffect(() => {
     if (user) {
       console.log("asdasd")
-      fetchUserLimits()
+      //fetchUserLimits()
     } else {
       console.log("sin usuario")
       setLimitsLoaded(false)
