@@ -205,12 +205,9 @@ export default function App() {
     }
 
     setIsCapturing(true)
-    const maxFrames = limits?.limits.max_frames || 10
+    const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
     const maxDuration = limits?.limits.max_duration_s || 5
     let frameCount = 0
-
-    // Calculate interval to capture max_frames evenly over max_duration
-    const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
 
     // Countdown
     setCaptureCountdown(maxDuration)
