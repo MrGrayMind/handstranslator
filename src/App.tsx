@@ -87,10 +87,10 @@ export default function App() {
   // ════════════════════════════════════════════
   useEffect(() => {
     if (user) {
+      setLimits(null)
       fetchUserLimits()
     } else {
-      setLimitsLoaded(false)
-      setCanUse(true)
+      setLimits(null)
     }
   }, [user])
 
@@ -101,12 +101,9 @@ export default function App() {
   
       if (error || !data) {
         setLimits({
-          can_use: true,
-          reason: 'fallback',
-          limits: {
-            max_frames: 10,
-            max_duration_s: 5
-          }
+          can_use: false,
+          reason: 'error',
+          limits: { max_frames: 0, max_duration_s: 0 }
         })
         return
       }
@@ -193,8 +190,8 @@ export default function App() {
       setAuthModalOpen(true)
       return
     }
-    if (!canUse) {
-      alert(limitReason || 'No puedes usar el servicio en este momento')
+    if (!limits?.can_use) {
+      alert(limits?.reason || 'No puedes usar el servicio en este momento')
       return
     }
     if (!cameraOn) {
@@ -203,8 +200,8 @@ export default function App() {
     }
 
     setIsCapturing(true)
-    const maxFrames = userLimits.max_frames || 10
-    const maxDuration = userLimits.max_duration_s || 5
+    const maxFrames = limits?.limits.max_frames || 10
+    const maxDuration = limits?.limits.max_duration_s || 5
     let frameCount = 0
 
     // Calculate interval to capture max_frames evenly over max_duration
