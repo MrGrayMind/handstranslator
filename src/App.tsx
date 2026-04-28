@@ -97,21 +97,41 @@ export default function App() {
   }, [user])
 
   const fetchUserLimits = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('user-status')
-      if (!error && data) {
-        setCanUse(data.can_use ?? true)
-        setLimitReason(data.reason ?? '')
-        setUserLimits(
-          data.limits ?? { max_frames: 0, max_duration_s: 0 }
-        )
-      }
-    } catch (err) {
-      console.error('Error fetching user limits:', err)
-    } finally {
-      setLimitsLoaded(true)
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (!token) {
+      throw new Error("No session")
     }
+
+    const res = await fetch(
+      "https://vxqjsqhoryjqojffbdtu.supabase.co/functions/v1/user-status",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || "Request failed")
+    }
+
+    setCanUse(data.can_use ?? true)
+    setLimitReason(data.reason ?? "")
+    setUserLimits(
+      data.limits ?? { max_frames: 0, max_duration_s: 0 }
+    );
+
+  } catch (err) {
+    console.error("Error fetching user limits:", err)
+  } finally {
+    setLimitsLoaded(true);
   }
+}
 
   // ════════════════════════════════════════════
   //  CAMERA
