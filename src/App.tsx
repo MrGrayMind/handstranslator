@@ -51,14 +51,7 @@ export default function App() {
   const [isCapturing, setIsCapturing] = useState(false)
   const [captureCountdown, setCaptureCountdown] = useState(0)
 
-  // ── User limits ──
-  const [userLimits, setUserLimits] = useState<UserLimits>({
-    max_frames: 0,
-    max_duration_s: 0,
-  })
-  const [canUse, setCanUse] = useState(false)
-  const [limitReason, setLimitReason] = useState('')
-  const [limitsLoaded, setLimitsLoaded] = useState(false)
+  // ── Limits ──
   const [limits, setLimits] = useState<null | {
   can_use: boolean
   reason: string
@@ -102,59 +95,37 @@ export default function App() {
   }, [user])
 
   const fetchUserLimits = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke('user-status')
-    console.log("RAW:", data, error)
-
-    if (error) {
-      console.error(error)
-
-      // Estado consistente en error
-      setCanUse(true)
-      setLimitReason('error')
-      setUserLimits({
-        max_frames: 0,
-        max_duration_s: 0
+    try {
+      const { data, error } = await supabase.functions.invoke('user-status')
+      console.log("RAW:", data, error)
+  
+      if (error || !data) {
+        setLimits({
+          can_use: true,
+          reason: 'fallback',
+          limits: {
+            max_frames: 10,
+            max_duration_s: 5
+          }
+        })
+        return
+      }
+  
+      setLimits(data)
+  
+    } catch (err) {
+      console.error(err)
+  
+      setLimits({
+        can_use: true,
+        reason: 'exception',
+        limits: {
+          max_frames: 10,
+          max_duration_s: 5
+        }
       })
-
-      return
     }
-
-    if (!data) {
-      console.warn("No data")
-
-      setCanUse(true)
-      setLimitReason('no_data')
-      setUserLimits({
-        max_frames: 0,
-        max_duration_s: 0
-      })
-
-      return
-    }
-    setLimits(data)
-    setCanUse(Boolean(data.can_use))
-    setLimitReason(data.reason || '')
-    setUserLimits({
-      max_frames: data.limits?.max_frames ?? 0,
-      max_duration_s: data.limits?.max_duration_s ?? 0
-    })
-
-  } catch (err) {
-    console.error('Error fetching user limits:', err)
-
-    // 🔥 también cubrir errores inesperados
-    setCanUse(true)
-    setLimitReason('exception')
-    setUserLimits({
-      max_frames: 0,
-      max_duration_s: 0
-    })
-
-  } finally {
-    setLimitsLoaded(true)
   }
-}
 
   // ════════════════════════════════════════════
   //  CAMERA
@@ -477,13 +448,13 @@ export default function App() {
                 <>
                   <ShieldCheck size={14} className="text-green-400" />
                   <span className="text-gray-400">
-                    Máx. {userLimits.max_frames} frames · {userLimits.max_duration_s}s video
+                    Máx. {limits.limits.max_frames} frames · {limits.limits.max_duration_s}s video
                   </span>
                 </>
               ) : (
                 <>
                   <AlertTriangle size={14} className="text-yellow-400" />
-                  <span className="text-yellow-400">{limitReason}</span>
+                  <span className="text-yellow-400">{limits.reason}</span>
                 </>
               )}
             </div>
