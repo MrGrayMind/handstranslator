@@ -97,30 +97,61 @@ export default function App() {
   }, [user])
 
   const fetchUserLimits = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('user-status')
-      console.log("RAW:", data, error)
-      if (error) {
-        console.error(error)
-        return
-      }
-      if (!data) {
-        console.warn("No data")
-        return
-      }
-      setCanUse(Boolean(data.can_use))
-      setLimitReason(data.reason || '')
+  try {
+    const { data, error } = await supabase.functions.invoke('user-status')
+    console.log("RAW:", data, error)
+
+    if (error) {
+      console.error(error)
+
+      // Estado consistente en error
+      setCanUse(true)
+      setLimitReason('error')
       setUserLimits({
-        max_frames: data.limits?.max_frames ?? 0,
-        max_duration_s: data.limits?.max_duration_s ?? 0
+        max_frames: 0,
+        max_duration_s: 0
       })
-  
-    } catch (err) {
-      console.error('Error fetching user limits:', err)
-    } finally {
-      setLimitsLoaded(true)
+
+      return
     }
+
+    if (!data) {
+      console.warn("No data")
+
+      setCanUse(true)
+      setLimitReason('no_data')
+      setUserLimits({
+        max_frames: 0,
+        max_duration_s: 0
+      })
+
+      return
+    }
+
+    // ✅ caso correcto
+    setCanUse(Boolean(data.can_use))
+    setLimitReason(data.reason || '')
+    setUserLimits({
+      max_frames: data.limits?.max_frames ?? 0,
+      max_duration_s: data.limits?.max_duration_s ?? 0
+    })
+
+  } catch (err) {
+    console.error('Error fetching user limits:', err)
+
+    // 🔥 también cubrir errores inesperados
+    setCanUse(true)
+    setLimitReason('exception')
+    setUserLimits({
+      max_frames: 0,
+      max_duration_s: 0
+    })
+
+  } finally {
+    // ✅ SIEMPRE se ejecuta
+    setLimitsLoaded(true)
   }
+}
 
   // ════════════════════════════════════════════
   //  CAMERA
