@@ -97,6 +97,7 @@ export default function App() {
   }, [user])
 
   const fetchUserLimits = async () => {
+    console.log(1)
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
       console.log(data)
