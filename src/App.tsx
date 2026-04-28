@@ -100,6 +100,7 @@ export default function App() {
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
       if (!error && data) {
+        console.log(data)
         setCanUse(data.can_use ?? true)
         setLimitReason(data.reason ?? '')
         setUserLimits(
