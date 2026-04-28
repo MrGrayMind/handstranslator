@@ -189,8 +189,8 @@ export default function App() {
     }
 
     setIsCapturing(true)
-    const maxFrames = userLimits.max_frames || 30
-    const maxDuration = userLimits.max_duration_s || 10
+    const maxFrames = userLimits.max_frames || 10
+    const maxDuration = userLimits.max_duration_s || 5
     let frameCount = 0
 
     // Calculate interval to capture max_frames evenly over max_duration
