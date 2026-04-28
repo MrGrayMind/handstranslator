@@ -69,7 +69,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
 
     try {
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -79,11 +79,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         },
       })
 
-      if (authError) {
-        setError(authError.message)
+      if (error) {
+        setError(error.message)
       } else {
-        setSuccess('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.')
-      }
+        if (data.user && !data.session) {
+          setSuccess('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.')
+        }else{
+          setSuccess("Cuenta creada y sesión iniciada")
+        }
     } catch {
       setError('Error inesperado al registrarse')
     } finally {
