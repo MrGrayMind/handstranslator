@@ -84,9 +84,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       } else {
         if (data.user && !data.session) {
           setSuccess('¡Registro exitoso! Revisa tu email para confirmar tu cuenta.')
-        }else{
+        } else {
           setSuccess("Cuenta creada y sesión iniciada")
         }
+      }
     } catch {
       setError('Error inesperado al registrarse')
     } finally {
