@@ -89,20 +89,16 @@ export default function App() {
   // ════════════════════════════════════════════
   useEffect(() => {
     if (user) {
-      console.log("asdasd")
-      //fetchUserLimits()
+      fetchUserLimits()
     } else {
-      console.log("sin usuario")
       setLimitsLoaded(false)
       setCanUse(true)
     }
   }, [user])
 
   const fetchUserLimits = async () => {
-    console.log("entro")
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
-      console.log(data)
       if (!error && data) {
         setCanUse(data.can_use ?? true)
         setLimitReason(data.reason ?? '')
