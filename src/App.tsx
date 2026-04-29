@@ -300,7 +300,27 @@ export default function App() {
     setResult(null)
 
     try {
-      // 🛠️ MEJORA 1: Creamos un arreglo de Promesas para subir en paralelo
+      // 1️⃣ LIMPIEZA: Buscar y borrar frames anteriores del usuario
+      const { data: existingFiles, error: listError } = await supabase.storage
+        .from('frames')
+        .list(user.id)
+
+      if (listError) {
+        throw new Error(`Error al buscar frames anteriores: ${listError.message}`)
+      }
+
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToRemove = existingFiles.map((file) => `${user.id}/${file.name}`)
+        const { error: removeError } = await supabase.storage
+          .from('frames')
+          .remove(filesToRemove)
+
+        if (removeError) {
+          throw new Error(`Error al limpiar frames antiguos: ${removeError.message}`)
+        }
+      }
+
+      // 2️⃣ SUBIDA: Subir los frames nuevos en paralelo
       const uploadPromises = frames.map(async (frame, index) => {
         const response = await fetch(frame)
         const blob = await response.blob()
@@ -312,22 +332,15 @@ export default function App() {
             contentType: 'image/jpeg',
           })
 
-        // 🛠️ MEJORA 2: Si un frame falla, lanzamos un error para detener todo
         if (uploadError) {
           throw new Error(`Fallo al subir el frame ${index + 1}: ${uploadError.message}`)
         }
       })
 
-      // Esperamos a que TODAS las imágenes se terminen de subir al mismo tiempo
       await Promise.all(uploadPromises)
 
-      // Una vez que sabemos que todas subieron con éxito, llamamos a la función
-      const { data, error } = await supabase.functions.invoke('translate', {
-        body: {
-          userId: user.id,
-          frameCount: frames.length,
-        },
-      })
+      // 3️⃣ PROCESAMIENTO: Llamar a la Edge Function sin parámetros
+      const { data, error } = await supabase.functions.invoke('translate')
 
       if (error) {
         console.error('Error from translate:', error)
@@ -337,7 +350,6 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Error processing:', err)
-      // Mostramos el mensaje exacto si falló la subida
       alert(err.message || 'Error al procesar los frames')
     } finally {
       setProcessing(false)
