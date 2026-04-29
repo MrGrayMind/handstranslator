@@ -21,6 +21,8 @@ import {
   Layers,
   ShieldCheck,
   X,
+  MessageSquare,
+  Send
 } from 'lucide-react'
 
 type Mode = 'sequence' | 'video'
@@ -860,22 +862,36 @@ export default function App() {
             <p className="text-gray-400 mb-8">Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.</p>
       
             <form 
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const data = Object.fromEntries(formData.entries());
-                
-                try {
-                  const { error } = await supabase.functions.invoke('form', { body: data });
-                  if (error) throw error;
-                  alert('¡Gracias por tus respuestas!');
-                  (e.target as HTMLFormElement).reset();
-                } catch (err) {
-                  alert('Error al enviar: Pronto tendremos lista esta función.');
-                }
-              }}
-              className="space-y-6"
-            >
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const payload = Object.fromEntries(formData.entries());
+                  
+                  // 1. Validar que el usuario esté logueado
+                  if (!user) {
+                    alert('Debes iniciar sesión para enviar tus comentarios.');
+                    setAuthModalOpen(true);
+                    return;
+                  }
+              
+                  try {
+                    // 2. Llamar a la Edge Function 'form'
+                    const { data, error } = await supabase.functions.invoke('form', {
+                      body: payload, // Enviamos los datos directamente
+                    });
+              
+                    if (error) throw error;
+              
+                    alert('¡Gracias! Tus respuestas se han guardado correctamente.');
+                    (e.target as HTMLFormElement).reset(); // Limpiar formulario
+              
+                  } catch (err: any) {
+                    console.error('Error al enviar formulario:', err);
+                    alert('Hubo un error al enviar tus respuestas. Por favor, intenta más tarde.');
+                  }
+                }}
+                className="space-y-6"
+              >
               {/* Pregunta 1 */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-gray-200">¿Tienes algún familiar que use lengua de señas?</label>
