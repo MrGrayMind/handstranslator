@@ -12,6 +12,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const [secretCode, setSecretCode] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,6 +24,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setEmail('')
     setPassword('')
     setUsername('')
+    setSecretCode('')
     setError('')
     setSuccess('')
     setShowPassword(false)
@@ -75,6 +77,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         options: {
           data: {
             username: username.trim(),
+            secretCode: secretCode.trim(),
           },
         },
       })
@@ -170,7 +173,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ej: juan123"
+                placeholder="Ej: kevin123"
                 required
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
@@ -216,6 +219,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </button>
             </div>
           </div>
+
+          {/* Secret code */}
+          {tab === 'register' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Codigo Secreto
+              </label>
+              <input
+                type="text"
+                value={secretCode}
+                onChange={(e) => setSecretCode(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+          )}
 
           {/* Error message */}
           {error && (
