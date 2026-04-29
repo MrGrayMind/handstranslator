@@ -807,6 +807,150 @@ export default function App() {
         </div>
       </main>
 
+      {/* ═══════════ SECCIÓN EDUCATIVA ═══════════ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-gray-900">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">Aprende sobre la LSM</h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            La Lengua de Señas Mexicana es más que solo manos; es cultura, identidad y gramática propia.
+          </p>
+        </div>
+      
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-indigo-500/50 transition-colors group">
+            <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Layers size={24} className="text-indigo-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-3">Dactilología</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Es el abecedario manual. Se utiliza para deletrear nombres propios, lugares o palabras que no tienen una seña específica. Es el primer paso para cualquier aprendiz.
+            </p>
+          </div>
+      
+          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-purple-500/50 transition-colors group">
+            <div className="w-12 h-12 bg-purple-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Hand size={24} className="text-purple-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-3">Ideogramas</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              A diferencia del deletreo, una sola seña representa un concepto o palabra completa (ej. "Casa", "Familia"). Estas señas involucran configuración, movimiento y gesticulación.
+            </p>
+          </div>
+      
+          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-pink-500/50 transition-colors group">
+            <div className="w-12 h-12 bg-pink-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <ShieldCheck size={24} className="text-pink-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-3">Mitos Comunes</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              La lengua de señas NO es universal. Cada país tiene la suya (LSM en México, LSE en España, ASL en EE.UU.). Tampoco es una mímica simplificada, es un idioma completo.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      {/* ═══════════ FORMULARIO DE COMUNIDAD ═══════════ */}
+      <section className="max-w-4xl mx-auto px-4 pb-24">
+        <div className="bg-gradient-to-br from-gray-900 to-indigo-900/20 rounded-[2.5rem] p-8 md:p-12 border border-indigo-500/20 relative overflow-hidden">
+          {/* Decoración de fondo */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl" />
+          
+          <div className="relative z-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Queremos conocerte</h2>
+            <p className="text-gray-400 mb-8">Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.</p>
+      
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const data = Object.fromEntries(formData.entries());
+                
+                try {
+                  const { error } = await supabase.functions.invoke('form', { body: data });
+                  if (error) throw error;
+                  alert('¡Gracias por tus respuestas!');
+                  (e.target as HTMLFormElement).reset();
+                } catch (err) {
+                  alert('Error al enviar: Pronto tendremos lista esta función.');
+                }
+              }}
+              className="space-y-6"
+            >
+              {/* Pregunta 1 */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-200">¿Tienes algún familiar que use lengua de señas?</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {['Sí, cercano', 'Sí, lejano', 'No'].map((opcion) => (
+                    <label key={opcion} className="relative">
+                      <input type="radio" name="familiar" value={opcion} className="peer sr-only" required />
+                      <div className="p-3 text-center text-sm bg-gray-800 border border-gray-700 rounded-xl cursor-pointer peer-checked:bg-indigo-600 peer-checked:border-indigo-400 transition-all">
+                        {opcion}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+      
+              {/* Pregunta 2 */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-200">¿Cuál es tu nivel de conocimiento en LSM?</label>
+                <select name="nivel" className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 transition-colors">
+                  <option value="ninguno">Ninguno</option>
+                  <option value="basico">Básico (Abecedario)</option>
+                  <option value="intermedio">Intermedio (Conversación fluida)</option>
+                  <option value="avanzado">Avanzado / Intérprete</option>
+                </select>
+              </div>
+      
+              {/* Pregunta 3 */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-200">¿Conoces a alguien que le pueda resultar útil esta página?</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {['Sí, mucho', 'Tal vez alguien'].map((opcion) => (
+                    <label key={opcion} className="relative">
+                      <input type="radio" name="utilidad" value={opcion} className="peer sr-only" />
+                      <div className="p-3 text-center text-sm bg-gray-800 border border-gray-700 rounded-xl cursor-pointer peer-checked:bg-indigo-600 peer-checked:border-indigo-400 transition-all">
+                        {opcion}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+      
+              {/* Pregunta Abierta */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-200">¿Qué otra función te gustaría ver?</label>
+                <textarea 
+                  name="sugerencia"
+                  rows={3} 
+                  placeholder="Ej: Diccionario visual, curso básico..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+      
+              <button
+                type="submit"
+                className="w-full py-4 bg-white text-gray-950 rounded-2xl font-bold hover:bg-indigo-50 transition-all shadow-xl shadow-white/5"
+              >
+                Enviar respuestas
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+      
+      {/* ═══════════ FOOTER ═══════════ */}
+      <footer className="bg-gray-900 border-t border-gray-800 py-12 text-center">
+        <div className="flex justify-center gap-6 mb-6">
+          <Hand className="text-gray-500" size={20} />
+          <ShieldCheck className="text-gray-500" size={20} />
+          <Layers className="text-gray-500" size={20} />
+        </div>
+        <p className="text-gray-500 text-xs">
+          © 2026 HandsTranslator. Tecnología con impacto social.
+        </p>
+      </footer>
+      
       {/* ═══════════ AUTH MODAL ═══════════ */}
       <AuthModal
         isOpen={authModalOpen}
