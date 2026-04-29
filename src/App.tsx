@@ -29,6 +29,7 @@ interface TranslationResult {
   resultado: string
   tipo: string
   confianza: string
+  analisis_movimiento?: string
   alternativas: { seña: string }[]
 }
 
@@ -746,6 +747,19 @@ export default function App() {
                     </span>
                   </div>
 
+                  {/* Bloque de Análisis de Movimiento */}
+                  {result.analisis_movimiento && (
+                    <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 mt-4">
+                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <div className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse" />
+                        Razonamiento de la IA
+                      </p>
+                      <p className="text-sm text-gray-300 leading-relaxed italic">
+                        "{result.analisis_movimiento}"
+                      </p>
+                    </div>
+                  )}
+                  
                   {/* Alternatives */}
                   {result.alternativas && result.alternativas.length > 0 && (
                     <div>
