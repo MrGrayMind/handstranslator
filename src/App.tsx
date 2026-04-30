@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   X,
   MessageSquare,
-  Send
+  Send,
+  Volume2
 } from 'lucide-react'
 
 type Mode = 'sequence' | 'video'
@@ -419,6 +420,23 @@ export default function App() {
   }
 
   // ════════════════════════════════════════════
+  //  SPEAK
+  // ════════════════════════════════════════════
+  const speak = (text: string) => {
+    // Cancelar cualquier lectura previa
+    window.speechSynthesis.cancel();
+  
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Configuración opcional
+    utterance.lang = 'es-MX'; // Español de México
+    utterance.rate = 0.9;     // Velocidad ligeramente más lenta para claridad
+    utterance.pitch = 1;      // Tono normal
+  
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // ════════════════════════════════════════════
   //  RENDER
   // ════════════════════════════════════════════
   return (
@@ -733,6 +751,13 @@ export default function App() {
                     <p className="text-3xl font-bold text-white">
                       {result.resultado}
                     </p>
+                    <button
+                      onClick={() => speak(result.resultado)}
+                      className="p-2 text-indigo-400 hover:text-white hover:bg-indigo-500/20 rounded-full transition-all"
+                      title="Escuchar respuesta"
+                    >
+                    <Volume2 size={24} />
+                    </button>
                   </div>
 
                   {/* Badges */}
@@ -781,6 +806,12 @@ export default function App() {
                             <span className="text-sm text-gray-300">
                               {alt.seña}
                             </span>
+                            <button
+                              onClick={() => speak(alt.seña)}
+                              className="p-1 text-gray-500 hover:text-indigo-400 transition-colors"
+                            >
+                              <Volume2 size={14} />
+                            </button>
                           </div>
                         ))}
                       </div>
