@@ -423,18 +423,23 @@ export default function App() {
   //  SPEAK
   // ════════════════════════════════════════════
   const speak = (text: string) => {
-    // Cancelar cualquier lectura previa
     window.speechSynthesis.cancel();
-  
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Configuración opcional
-    utterance.lang = 'es-MX'; // Español de México
-    utterance.rate = 0.9;     // Velocidad ligeramente más lenta para claridad
-    utterance.pitch = 1;      // Tono normal
+    // 🛠️ Buscar voces premium instaladas
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Intentamos buscar voces que digan "Google" o "Natural" que suelen ser mejores
+    const bestVoice = voices.find(v => v.lang.includes('es') && v.name.includes('Google')) 
+                   || voices.find(v => v.lang.includes('es')) 
+                   || voices[0];
   
+    if (bestVoice) utterance.voice = bestVoice;
+    
+    utterance.lang = 'es-MX';
+    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
-  };
+  }
 
   // ════════════════════════════════════════════
   //  RENDER
