@@ -435,6 +435,8 @@ export default function App() {
                    || voices[0];
   
     if (bestVoice) utterance.voice = bestVoice;
+
+    utterance.volume = 0.8;
     
     utterance.lang = 'es-MX';
     utterance.rate = 0.9;
