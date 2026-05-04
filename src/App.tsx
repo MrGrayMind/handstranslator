@@ -262,7 +262,7 @@ export default function App() {
     setPlaylist([]) // Limpiar carrusel anterior
 
     // Limpiar texto: minúsculas, quitar acentos y caracteres raros
-    const cleanText = inputText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
+    const cleanText = inputText.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     const words = cleanText.split(' ')
 
     let newPlaylist: { url: string; label: string }[] = []
@@ -273,9 +273,9 @@ export default function App() {
         newPlaylist.push({ url: `/señas/palabras/${word}.gif`, label: word })
       } else {
         for (const letter of word) {
-          if (/[a-z]/.test(letter)) {
-            // Guardamos el .jpeg para letras y su etiqueta
-            newPlaylist.push({ url: `/señas/letras/${letter}.jpeg`, label: letter })
+          if (/[A-Z]/.test(letter)) {
+            // Guardamos el .png para letras y su etiqueta
+            newPlaylist.push({ url: `/señas/letras/${letter}.png`, label: letter })
           }
         }
       }
