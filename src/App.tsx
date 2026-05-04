@@ -26,9 +26,11 @@ import {
   Volume2,
   Sun,
   Moon,
+  Keyboard, // 🛠️ Importamos el icono para el modo texto
 } from 'lucide-react'
 
-type Mode = 'sequence' | 'video'
+// 🛠️ Añadimos 'text' a los modos disponibles
+type Mode = 'sequence' | 'video' | 'text'
 
 interface TranslationResult {
   resultado: string
@@ -42,6 +44,9 @@ interface UserLimits {
   max_frames: number
   max_duration_s: number
 }
+
+// 🛠️ DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
+const PALABRAS_DISPONIBLES = ['hola', 'gracias', 'ayuda', 'nombre', 'por favor']
 
 export default function App() {
   // ── Auth state ──
@@ -58,12 +63,18 @@ export default function App() {
   const [captureCountdown, setCaptureCountdown] = useState(0)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
+  // 🛠️ ── Estados para Texto a Señas ──
+  const [inputText, setInputText] = useState('')
+  const [playlist, setPlaylist] = useState<string[]>([])
+  const [currentSignIndex, setCurrentSignIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
-  can_use: boolean
-  reason: string
-  limits: UserLimits
-}>(null)
+    can_use: boolean
+    reason: string
+    limits: UserLimits
+  }>(null)
 
   // ── Refs ──
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -114,13 +125,11 @@ export default function App() {
         return
       }
 
-      // 🛠️ SOLUCIÓN: Verificamos si data es un string. Si lo es, lo parseamos a JSON.
       const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
       setLimits(parsedData);
 
     } catch (err) {
       console.error(err)
-
       setLimits({
         can_use: true,
         reason: 'exception',
@@ -187,24 +196,12 @@ export default function App() {
     setFrames((prev) => [...prev, dataUrl])
   }, [])
 
-  // ── Sequence mode: manual capture ──
   const handleSequenceCapture = () => {
-    if (!user) {
-      setAuthModalOpen(true)
-      return
-    }
-    if (!limits) {
-      alert('Cargando límites...')
-      return
-    }
-    if (!limits.can_use) {
-      alert(limits.reason || 'No puedes usar el servicio en este momento')
-      return
-    }
+    if (!user) return setAuthModalOpen(true)
+    if (!limits) return alert('Cargando límites...')
+    if (!limits.can_use) return alert(limits.reason || 'No puedes usar el servicio en este momento')
 
     const maxFrames = limits.limits.max_frames || 10
-
-    // 🛠️ SOLUCIÓN: Verificamos si ya llegamos al límite de frames
     if (frames.length >= maxFrames) {
       alert(`Has alcanzado el límite máximo de ${maxFrames} frames permitidos.`)
       return
@@ -213,47 +210,27 @@ export default function App() {
     captureFrame()
   }
 
-  // ── Video mode: auto capture ──
   const startVideoCapture = () => {
-    if (!user) {
-      setAuthModalOpen(true)
-      return
-    }
-    if (!limits) {
-      alert('Cargando límites...')
-      return
-    }
-
-    if (!limits.can_use) {
-      alert(limits.reason || 'No puedes usar el servicio en este momento')
-      return
-    }
-    if (!cameraOn) {
-      alert('Primero enciende la cámara')
-      return
-    }
+    if (!user) return setAuthModalOpen(true)
+    if (!limits) return alert('Cargando límites...')
+    if (!limits.can_use) return alert(limits.reason || 'No puedes usar el servicio en este momento')
+    if (!cameraOn) return alert('Primero enciende la cámara')
 
     clearFrames()
-    
     setIsCapturing(true)
+    
     const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
     const maxDuration = limits?.limits.max_duration_s || 5
     let frameCount = 0
 
-    // Countdown
     setCaptureCountdown(maxDuration)
-
-    // 🛠️ SOLUCIÓN: Declaramos intervalMs dividiendo el tiempo total entre los frames
     const intervalMs = (maxDuration / maxFrames) * 1000
 
     captureIntervalRef.current = setInterval(() => {
       captureFrame()
       frameCount++
-
-      if (frameCount >= maxFrames) {
-        stopCapture()
-      }
-    }, intervalMs) // <--- Ahora sí existe
+      if (frameCount >= maxFrames) stopCapture()
+    }, intervalMs)
   }
 
   const stopCapture = () => {
@@ -264,7 +241,6 @@ export default function App() {
     setIsCapturing(false)
   }
 
-  // Countdown timer for video mode
   useEffect(() => {
     if (!isCapturing || captureCountdown <= 0) return
     const timer = setTimeout(() => {
@@ -280,6 +256,54 @@ export default function App() {
   }, [isCapturing, captureCountdown])
 
   // ════════════════════════════════════════════
+  //  TEXT TO SIGN LOGIC
+  // ════════════════════════════════════════════
+  const handleTextToSign = () => {
+    if (!inputText.trim()) return
+    setIsPlaying(false)
+    setPlaylist([])
+
+    // Limpiar texto: minúsculas, quitar acentos y caracteres raros
+    const cleanText = inputText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
+    const words = cleanText.split(' ')
+
+    let newPlaylist: string[] = []
+
+    for (const word of words) {
+      if (PALABRAS_DISPONIBLES.includes(word)) {
+        newPlaylist.push(`/señas/palabras/${word}.gif`)
+      } else {
+        for (const letter of word) {
+          if (/[a-z]/.test(letter)) {
+            newPlaylist.push(`/señas/letras/${letter}.gif`)
+          }
+        }
+      }
+    }
+
+    setPlaylist(newPlaylist)
+    setCurrentSignIndex(0)
+    setIsPlaying(true)
+  }
+
+  // Reproductor visual (Cambia el GIF cada 1.5s)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    
+    if (isPlaying && playlist.length > 0) {
+      if (currentSignIndex < playlist.length) {
+        timer = setTimeout(() => {
+          setCurrentSignIndex(prev => prev + 1)
+        }, 1500) 
+      } else {
+        setIsPlaying(false)
+      }
+    }
+
+    return () => clearTimeout(timer)
+  }, [isPlaying, currentSignIndex, playlist])
+
+  // ════════════════════════════════════════════
   //  CHANGE MODE
   // ════════════════════════════════════════════
   const handleModeChange = (newMode: Mode) => {
@@ -287,6 +311,8 @@ export default function App() {
       setMode(newMode)
       clearFrames()
       if (isCapturing) stopCapture() 
+      // Si entramos a modo texto, apagamos la cámara
+      if (newMode === 'text' && cameraOn) stopCamera()
     }
   }
   
@@ -294,59 +320,35 @@ export default function App() {
   //  PROCESS FRAMES
   // ════════════════════════════════════════════
   const processFrames = async () => {
-    if (!user) {
-      setAuthModalOpen(true)
-      return
-    }
-    if (frames.length === 0) {
-      alert('No hay frames para procesar')
-      return
-    }
+    if (!user) return setAuthModalOpen(true)
+    if (frames.length === 0) return alert('No hay frames para procesar')
 
     setProcessing(true)
     setResult(null)
 
     try {
-      // 1️⃣ LIMPIEZA: Buscar y borrar frames anteriores del usuario
-      const { data: existingFiles, error: listError } = await supabase.storage
-        .from('frames')
-        .list(user.id)
-
-      if (listError) {
-        throw new Error(`Error al buscar frames anteriores: ${listError.message}`)
-      }
+      const { data: existingFiles, error: listError } = await supabase.storage.from('frames').list(user.id)
+      if (listError) throw new Error(`Error al buscar frames anteriores: ${listError.message}`)
 
       if (existingFiles && existingFiles.length > 0) {
         const filesToRemove = existingFiles.map((file) => `${user.id}/${file.name}`)
-        const { error: removeError } = await supabase.storage
-          .from('frames')
-          .remove(filesToRemove)
-
-        if (removeError) {
-          throw new Error(`Error al limpiar frames antiguos: ${removeError.message}`)
-        }
+        const { error: removeError } = await supabase.storage.from('frames').remove(filesToRemove)
+        if (removeError) throw new Error(`Error al limpiar frames antiguos: ${removeError.message}`)
       }
 
-      // 2️⃣ SUBIDA: Subir los frames nuevos en paralelo
       const uploadPromises = frames.map(async (frame, index) => {
         const response = await fetch(frame)
         const blob = await response.blob()
 
         const { error: uploadError } = await supabase.storage
           .from('frames')
-          .upload(`${user.id}/frame${index + 1}.jpg`, blob, {
-            upsert: true,
-            contentType: 'image/jpeg',
-          })
+          .upload(`${user.id}/frame${index + 1}.jpg`, blob, { upsert: true, contentType: 'image/jpeg' })
 
-        if (uploadError) {
-          throw new Error(`Fallo al subir el frame ${index + 1}: ${uploadError.message}`)
-        }
+        if (uploadError) throw new Error(`Fallo al subir el frame ${index + 1}: ${uploadError.message}`)
       })
 
       await Promise.all(uploadPromises)
 
-      // 3️⃣ PROCESAMIENTO: Llamar a la Edge Function sin parámetros
       const { data, error } = await supabase.functions.invoke('translate')
 
       if (error) {
@@ -364,16 +366,13 @@ export default function App() {
   }
 
   // ════════════════════════════════════════════
-  //  CLEAR
+  //  CLEAR & UTILS
   // ════════════════════════════════════════════
   const clearFrames = () => {
     setFrames([])
     setResult(null)
   }
 
-  // ════════════════════════════════════════════
-  //  CAROUSEL SCROLL
-  // ════════════════════════════════════════════
   const scrollCarousel = (direction: 'left' | 'right') => {
     if (carouselRef.current) {
       const scrollAmount = 160
@@ -384,66 +383,43 @@ export default function App() {
     }
   }
 
-  // ════════════════════════════════════════════
-  //  CONFIDENCE BADGE
-  // ════════════════════════════════════════════
   const getConfidenceColor = (confianza: string) => {
     switch (confianza.toLowerCase()) {
-      case 'alto':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'medio':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'bajo':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+      case 'alto': return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'medio': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+      case 'bajo': return 'bg-red-500/20 text-red-400 border-red-500/30'
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
   }
 
   const getTypeColor = (tipo: string) => {
     switch (tipo.toLowerCase()) {
-      case 'dactilologia':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'seña-palabra':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'numero':
-        return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+      case 'dactilologia': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'seña-palabra': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      case 'numero': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
   }
 
-  // ════════════════════════════════════════════
-  //  LOGOUT
-  // ════════════════════════════════════════════
   const handleLogout = async () => {
     stopCamera()
     clearFrames()
     await supabase.auth.signOut()
   }
 
-  // ════════════════════════════════════════════
-  //  SPEAK
-  // ════════════════════════════════════════════
   const speak = (text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // 🛠️ Buscar voces premium instaladas
-    const voices = window.speechSynthesis.getVoices();
-    
-    // Intentamos buscar voces que digan "Google" o "Natural" que suelen ser mejores
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    const voices = window.speechSynthesis.getVoices()
     const bestVoice = voices.find(v => v.lang.includes('es') && v.name.includes('Google')) 
                    || voices.find(v => v.lang.includes('es')) 
-                   || voices[0];
+                   || voices[0]
   
-    if (bestVoice) utterance.voice = bestVoice;
-
-    utterance.volume = 0.8;
-    
-    utterance.lang = 'es-MX';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    if (bestVoice) utterance.voice = bestVoice
+    utterance.volume = 0.8
+    utterance.lang = 'es-MX'
+    utterance.rate = 0.9
+    window.speechSynthesis.speak(utterance)
   }
 
   // ════════════════════════════════════════════
@@ -462,7 +438,6 @@ export default function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-600/20">
                 <Hand size={24} className="text-white" />
@@ -472,9 +447,7 @@ export default function App() {
               </span>
             </div>
 
-            {/* User controls & Theme Toggle */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* 🛠️ Botón de Tema */}
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 className={`p-2.5 rounded-xl transition-all border cursor-pointer ${
@@ -522,39 +495,46 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ── Mode Selector ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className={`flex rounded-xl p-1.5 border transition-colors ${
+          <div className={`flex flex-wrap rounded-xl p-1.5 border transition-colors ${
             theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
           }`}>
             <button
               onClick={() => handleModeChange('sequence')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 mode === 'sequence'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : theme === 'dark' 
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <Layers size={16} />
-              Secuencia de señas
+              Secuencia
             </button>
             <button
               onClick={() => handleModeChange('video')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : theme === 'dark' 
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <Video size={16} />
               Video
             </button>
+            {/* 🛠️ NUEVO BOTÓN TEXTO A SEÑAS */}
+            <button
+              onClick={() => handleModeChange('text')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                mode === 'text'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <Keyboard size={16} />
+              Texto a señas
+            </button>
           </div>
 
-          {/* User limits info */}
-          {user && limits && (
+          {user && limits && mode !== 'text' && (
             <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${
               theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
             }`}>
@@ -575,324 +555,259 @@ export default function App() {
           )}
         </div>
 
-        {/* ── Main Grid: Camera + Results ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ═══ LEFT: Camera Area ═══ */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Camera Feed */}
-            <div className={`relative rounded-2xl border overflow-hidden transition-colors ${
-              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
-            }`}>
-              <div className="aspect-video relative flex items-center justify-center bg-black">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full h-full object-cover ${cameraOn ? 'block' : 'hidden'}`}
-                />
-                {!cameraOn && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                    <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
-                      <Camera size={48} className="text-gray-500" />
-                    </div>
-                    <p className="text-gray-400 text-sm font-medium">
-                      Enciende la cámara para comenzar
-                    </p>
-                  </div>
-                )}
-                {/* Recording indicator */}
-                {isCapturing && (
-                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
-                    <CircleDot size={12} className="text-white animate-pulse" />
-                    <span className="text-white text-xs font-bold">
-                      REC {captureCountdown}s
-                    </span>
-                  </div>
-                )}
-              </div>
+        {/* ── Main Workspace ── */}
+        {mode === 'text' ? (
+          /* ═══════════ VISTA TEXTO A SEÑAS ═══════════ */
+          <div className={`rounded-2xl border p-6 flex flex-col gap-6 transition-colors ${
+            theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+          }`}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()}
+                placeholder="Escribe una palabra o frase para traducir a señas..."
+                className={`flex-1 border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500' 
+                    : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400'
+                }`}
+              />
+              <button
+                onClick={handleTextToSign}
+                className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg cursor-pointer ${
+                  theme === 'dark' 
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20' 
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
+                }`}
+              >
+                Traducir
+              </button>
             </div>
 
-            {/* ── Frame Carousel ── */}
-            <div className={`rounded-2xl border p-4 transition-colors ${
-              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            <div className={`aspect-video rounded-xl overflow-hidden relative flex items-center justify-center border ${
+              theme === 'dark' ? 'bg-black border-gray-800' : 'bg-gray-100 border-gray-200'
             }`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Frames capturados
-                  <span className={`ml-2 text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    ({frames.length} {frames.length === 1 ? 'frame' : 'frames'})
-                  </span>
-                </h3>
-                {frames.length > 0 && (
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => scrollCarousel('left')}
-                      className={`p-1 rounded-lg transition-colors ${
-                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                      }`}
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      onClick={() => scrollCarousel('right')}
-                      className={`p-1 rounded-lg transition-colors ${
-                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                      }`}
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {frames.length === 0 ? (
-                <div className={`py-8 text-center text-sm font-medium ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Los frames capturados aparecerán aquí
-                </div>
+              {isPlaying && currentSignIndex < playlist.length ? (
+                <img 
+                  key={currentSignIndex} 
+                  src={playlist[currentSignIndex]} 
+                  alt="Seña en reproducción" 
+                  className="w-full h-full object-contain"
+                />
               ) : (
-                <div
-                  ref={carouselRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-thin pb-2"
-                  style={{ scrollbarWidth: 'thin' }}
-                >
-                  {frames.map((frame, index) => (
-                    <div key={index} className="flex-shrink-0 relative group">
-                      <img
-                        src={frame}
-                        alt={`Frame ${index + 1}`}
-                        className={`w-24 h-18 object-cover rounded-xl border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}
-                      />
-                      <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-sm text-[10px] text-white font-bold px-1.5 py-0.5 rounded-md">
-                        {index + 1}
-                      </div>
-                      <button
-                        onClick={() => setFrames((prev) => prev.filter((_, i) => i !== index))}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
+                <div className="flex flex-col items-center gap-4">
+                  <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                    <Keyboard size={40} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
+                  </div>
+                  <p className={`font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                    {playlist.length === 0 && !isPlaying 
+                      ? 'El avatar virtual aparecerá aquí' 
+                      : 'Traducción finalizada'}
+                  </p>
+                </div>
+              )}
+              
+              {playlist.length > 0 && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 flex-wrap px-4">
+                  {playlist.map((_, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all ${
+                      i === currentSignIndex 
+                        ? 'w-6 bg-indigo-500' 
+                        : i < currentSignIndex 
+                          ? 'w-2 bg-indigo-500/50' 
+                          : 'w-2 bg-gray-600/50'
+                    }`} />
                   ))}
                 </div>
               )}
             </div>
-
-            {/* ── Control Buttons ── */}
-            <div className="flex flex-wrap gap-3">
-              {/* Camera toggle */}
-              <button
-                onClick={toggleCamera}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${
-                  cameraOn
-                    ? theme === 'dark' 
-                      ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' 
-                      : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
-                    : theme === 'dark'
-                      ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'
-                      : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
-                }`}
-              >
-                {cameraOn ? (
-                  <><CameraOff size={18} /> Apagar cámara</>
-                ) : (
-                  <><Camera size={18} /> Encender cámara</>
-                )}
-              </button>
-
-              {/* Capture / Start Stop */}
-              {mode === 'sequence' ? (
-                <button
-                  onClick={handleSequenceCapture}
-                  disabled={!cameraOn}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
-                    theme === 'dark' 
-                      ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' 
-                      : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'
-                  } disabled:shadow-none border-none`}
-                >
-                  <CircleDot size={18} /> Capturar
-                </button>
-              ) : (
-                <button
-                  onClick={isCapturing ? stopCapture : startVideoCapture}
-                  disabled={!cameraOn && !isCapturing}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
-                    isCapturing
-                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
-                      : theme === 'dark'
-                        ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20'
-                        : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'
-                  } disabled:shadow-none border-none`}
-                >
-                  {isCapturing ? (
-                    <><Square size={18} /> Detener ({captureCountdown}s)</>
-                  ) : (
-                    <><CircleDot size={18} /> Iniciar captura</>
-                  )}
-                </button>
-              )}
-
-              {/* Process */}
-              <button
-                onClick={processFrames}
-                disabled={processing || frames.length === 0}
-                className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
-                  theme === 'dark'
-                    ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-purple-600/20'
-                    : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-purple-600/20'
-                } disabled:shadow-none border-none`}
-              >
-                {processing ? (
-                  <><Loader2 size={18} className="animate-spin" /> Procesando...</>
-                ) : (
-                  <><Zap size={18} /> Procesar</>
-                )}
-              </button>
-
-              {/* Clear */}
-              <button
-                onClick={clearFrames}
-                disabled={frames.length === 0}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700 disabled:bg-gray-900 disabled:text-gray-700 disabled:border-gray-800'
-                    : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm disabled:shadow-none'
-                }`}
-              >
-                <Trash2 size={18} /> Limpiar
-              </button>
-            </div>
           </div>
-
-          {/* ═══ RIGHT: Results Panel ═══ */}
-          <div className="lg:col-span-1">
-            <div className={`rounded-2xl border p-6 sticky top-24 transition-colors ${
-              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-            }`}>
-              <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                <Zap size={20} className="text-indigo-500" />
-                Resultado
-              </h3>
-
-              {processing ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <Loader2 size={40} className="text-indigo-500 animate-spin" />
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Procesando frames con IA...
-                  </p>
-                  <div className={`w-full rounded-full h-1.5 overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                    <div className="bg-indigo-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
-                  </div>
-                </div>
-              ) : result ? (
-                <div className="space-y-5">
-                  {/* Main result */}
-                  <div className={`border rounded-xl p-6 text-center relative ${
-                    theme === 'dark' 
-                      ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-indigo-500/30' 
-                      : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-inner'
-                  }`}>
-                    <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-600'}`}>
-                      Traducción
-                    </p>
-                    <div className="flex items-center justify-center gap-3">
-                      <p className={`text-4xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {result.resultado}
+        ) : (
+          /* ═══════════ VISTA CÁMARA (SECUENCIA / VIDEO) ═══════════ */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className={`relative rounded-2xl border overflow-hidden transition-colors ${
+                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
+              }`}>
+                <div className="aspect-video relative flex items-center justify-center bg-black">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`w-full h-full object-cover ${cameraOn ? 'block' : 'hidden'}`}
+                  />
+                  {!cameraOn && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                      <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
+                        <Camera size={48} className="text-gray-500" />
+                      </div>
+                      <p className="text-gray-400 text-sm font-medium">
+                        Enciende la cámara para comenzar
                       </p>
-                      <button
-                        onClick={() => speak(result.resultado)}
-                        className={`p-2 rounded-full transition-all ${
-                          theme === 'dark' ? 'text-indigo-400 hover:text-white hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'
-                        }`}
-                        title="Escuchar respuesta"
-                      >
-                        <Volume2 size={24} />
+                    </div>
+                  )}
+                  {isCapturing && (
+                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+                      <CircleDot size={12} className="text-white animate-pulse" />
+                      <span className="text-white text-xs font-bold">
+                        REC {captureCountdown}s
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={`rounded-2xl border p-4 transition-colors ${
+                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Frames capturados
+                    <span className={`ml-2 text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      ({frames.length} {frames.length === 1 ? 'frame' : 'frames'})
+                    </span>
+                  </h3>
+                  {frames.length > 0 && (
+                    <div className="flex gap-1">
+                      <button onClick={() => scrollCarousel('left')} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button onClick={() => scrollCarousel('right')} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
+                        <ChevronRight size={18} />
                       </button>
                     </div>
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getTypeColor(result.tipo)}`}>
-                      {result.tipo}
-                    </span>
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getConfidenceColor(result.confianza)}`}>
-                      Confianza: {result.confianza}
-                    </span>
-                  </div>
-
-                  {/* Bloque de Análisis de Movimiento */}
-                  {result.analisis_movimiento && (
-                    <div className={`border rounded-xl p-5 mt-4 ${
-                      theme === 'dark' ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-50 border-gray-200'
-                    }`}>
-                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 ${
-                        theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
-                      }`}>
-                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                        Razonamiento de la IA
-                      </p>
-                      <p className={`text-sm leading-relaxed italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        "{result.analisis_movimiento}"
-                      </p>
-                    </div>
                   )}
-                  
-                  {/* Alternatives */}
-                  {result.alternativas && result.alternativas.length > 0 && (
-                    <div>
-                      <p className={`text-sm font-bold mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Alternativas
-                      </p>
-                      <div className="space-y-2">
-                        {result.alternativas.map((alt, index) => (
-                          <div
-                            key={index}
-                            className={`flex items-center justify-between border rounded-lg px-4 py-2.5 ${
-                              theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <CheckCircle size={16} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
-                              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                                {alt.seña}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => speak(alt.seña)}
-                              className={`p-1.5 rounded-md transition-colors ${
-                                theme === 'dark' ? 'text-gray-400 hover:text-indigo-400 hover:bg-gray-700' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
-                              }`}
-                            >
-                              <Volume2 size={16} />
-                            </button>
-                          </div>
-                        ))}
+                </div>
+
+                {frames.length === 0 ? (
+                  <div className={`py-8 text-center text-sm font-medium ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                    Los frames capturados aparecerán aquí
+                  </div>
+                ) : (
+                  <div ref={carouselRef} className="flex gap-3 overflow-x-auto scrollbar-thin pb-2" style={{ scrollbarWidth: 'thin' }}>
+                    {frames.map((frame, index) => (
+                      <div key={index} className="flex-shrink-0 relative group">
+                        <img src={frame} alt={`Frame ${index + 1}`} className={`w-24 h-18 object-cover rounded-xl border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`} />
+                        <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-sm text-[10px] text-white font-bold px-1.5 py-0.5 rounded-md">
+                          {index + 1}
+                        </div>
+                        <button onClick={() => setFrames((prev) => prev.filter((_, i) => i !== index))} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg cursor-pointer">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button onClick={toggleCamera} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${cameraOn ? theme === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : theme === 'dark' ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
+                  {cameraOn ? <><CameraOff size={18} /> Apagar cámara</> : <><Camera size={18} /> Encender cámara</>}
+                </button>
+
+                {mode === 'sequence' ? (
+                  <button onClick={handleSequenceCapture} disabled={!cameraOn} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'} disabled:shadow-none border-none`}>
+                    <CircleDot size={18} /> Capturar
+                  </button>
+                ) : (
+                  <button onClick={isCapturing ? stopCapture : startVideoCapture} disabled={!cameraOn && !isCapturing} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${isCapturing ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25' : theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'} disabled:shadow-none border-none`}>
+                    {isCapturing ? <><Square size={18} /> Detener ({captureCountdown}s)</> : <><CircleDot size={18} /> Iniciar captura</>}
+                  </button>
+                )}
+
+                <button onClick={processFrames} disabled={processing || frames.length === 0} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${theme === 'dark' ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-purple-600/20' : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-purple-600/20'} disabled:shadow-none border-none`}>
+                  {processing ? <><Loader2 size={18} className="animate-spin" /> Procesando...</> : <><Zap size={18} /> Procesar</>}
+                </button>
+
+                <button onClick={clearFrames} disabled={frames.length === 0} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700 disabled:bg-gray-900 disabled:text-gray-700 disabled:border-gray-800' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm disabled:shadow-none'}`}>
+                  <Trash2 size={18} /> Limpiar
+                </button>
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className={`rounded-2xl border p-6 sticky top-24 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <Zap size={20} className="text-indigo-500" /> Resultado
+                </h3>
+
+                {processing ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <Loader2 size={40} className="text-indigo-500 animate-spin" />
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Procesando frames con IA...
+                    </p>
+                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                      <div className="bg-indigo-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
+                    </div>
+                  </div>
+                ) : result ? (
+                  <div className="space-y-5">
+                    <div className={`border rounded-xl p-6 text-center relative ${theme === 'dark' ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-indigo-500/30' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-inner'}`}>
+                      <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-600'}`}>Traducción</p>
+                      <div className="flex items-center justify-center gap-3">
+                        <p className={`text-4xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{result.resultado}</p>
+                        <button onClick={() => speak(result.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:text-white hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'}`} title="Escuchar respuesta">
+                          <Volume2 size={24} />
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                    <Zap size={32} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
+
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getTypeColor(result.tipo)}`}>{result.tipo}</span>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getConfidenceColor(result.confianza)}`}>Confianza: {result.confianza}</span>
+                    </div>
+
+                    {result.analisis_movimiento && (
+                      <div className={`border rounded-xl p-5 mt-4 ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-50 border-gray-200'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                          <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                          Razonamiento de la IA
+                        </p>
+                        <p className={`text-sm leading-relaxed italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>"{result.analisis_movimiento}"</p>
+                      </div>
+                    )}
+                    
+                    {result.alternativas && result.alternativas.length > 0 && (
+                      <div>
+                        <p className={`text-sm font-bold mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Alternativas</p>
+                        <div className="space-y-2">
+                          {result.alternativas.map((alt, index) => (
+                            <div key={index} className={`flex items-center justify-between border rounded-lg px-4 py-2.5 ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
+                              <div className="flex items-center gap-3">
+                                <CheckCircle size={16} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
+                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{alt.seña}</span>
+                              </div>
+                              <button onClick={() => speak(alt.seña)} className={`p-1.5 rounded-md transition-colors cursor-pointer ${theme === 'dark' ? 'text-gray-400 hover:text-indigo-400 hover:bg-gray-700' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                                <Volume2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className={`text-sm font-medium text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Los resultados aparecerán aquí
-                    <br />
-                    después de procesar los frames
-                  </p>
-                  {!user && (
-                    <p className="text-indigo-500 text-xs font-bold text-center mt-2">
-                      Inicia sesión para procesar
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                      <Zap size={32} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
+                    </div>
+                    <p className={`text-sm font-medium text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Los resultados aparecerán aquí
+                      <br />después de procesar los frames
                     </p>
-                  )}
-                </div>
-              )}
+                    {!user && (
+                      <p className="text-indigo-500 text-xs font-bold text-center mt-2">Inicia sesión para procesar</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* ═══════════ SECCIÓN EDUCATIVA ═══════════ */}
@@ -960,7 +875,6 @@ export default function App() {
             ? 'bg-gradient-to-br from-gray-900 to-indigo-900/20 border-indigo-500/20' 
             : 'bg-gradient-to-br from-white to-indigo-50/50 border-indigo-200 shadow-2xl shadow-indigo-100/50'
         }`}>
-          {/* Decoración de fondo */}
           <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl ${
             theme === 'dark' ? 'bg-indigo-600/10' : 'bg-indigo-300/30'
           }`} />
@@ -997,7 +911,6 @@ export default function App() {
                 }}
                 className="space-y-8"
               >
-              {/* Pregunta 1 */}
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Tienes algún familiar que use lengua de señas?
@@ -1018,12 +931,11 @@ export default function App() {
                 </div>
               </div>
       
-              {/* Pregunta 2 */}
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Cuál es tu nivel de conocimiento en LSM?
                 </label>
-                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors ${
+                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors cursor-pointer ${
                   theme === 'dark' 
                     ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500' 
                     : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 shadow-sm'
@@ -1035,7 +947,6 @@ export default function App() {
                 </select>
               </div>
       
-              {/* Pregunta 3 */}
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Conoces a alguien que le pueda resultar útil esta página?
@@ -1056,7 +967,6 @@ export default function App() {
                 </div>
               </div>
       
-              {/* Pregunta Abierta */}
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Qué otra función te gustaría ver?
