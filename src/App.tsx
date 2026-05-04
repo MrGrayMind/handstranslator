@@ -477,7 +477,7 @@ export default function App() {
               {/* 🛠️ Botón de Tema */}
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`p-2.5 rounded-xl transition-all border ${
+                className={`p-2.5 rounded-xl transition-all border cursor-pointer ${
                   theme === 'dark' 
                     ? 'bg-gray-800/50 border-gray-700 text-yellow-400 hover:bg-gray-800' 
                     : 'bg-gray-100 border-gray-200 text-indigo-600 hover:bg-gray-200'
@@ -494,7 +494,7 @@ export default function App() {
                   </span>
                   <button
                     onClick={handleLogout}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${
                       theme === 'dark' 
                         ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
                         : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
@@ -507,7 +507,7 @@ export default function App() {
               ) : (
                 <button
                   onClick={() => setAuthModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium text-sm shadow-lg shadow-indigo-600/25"
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium text-sm shadow-lg shadow-indigo-600/25 cursor-pointer"
                 >
                   <UserIcon size={18} />
                   <span className="hidden sm:inline">Iniciar Sesión</span>
