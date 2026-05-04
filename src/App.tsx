@@ -65,9 +65,8 @@ export default function App() {
 
   // 🛠️ ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
-  const [playlist, setPlaylist] = useState<string[]>([])
-  const [currentSignIndex, setCurrentSignIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
+  // Ahora guardamos la URL y también la etiqueta (letra o palabra)
+  const [playlist, setPlaylist] = useState<{ url: string; label: string }[]>([])
 
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
@@ -260,30 +259,29 @@ export default function App() {
   // ════════════════════════════════════════════
   const handleTextToSign = () => {
     if (!inputText.trim()) return
-    setIsPlaying(false)
-    setPlaylist([])
+    setPlaylist([]) // Limpiar carrusel anterior
 
     // Limpiar texto: minúsculas, quitar acentos y caracteres raros
     const cleanText = inputText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     const words = cleanText.split(' ')
 
-    let newPlaylist: string[] = []
+    let newPlaylist: { url: string; label: string }[] = []
 
     for (const word of words) {
       if (PALABRAS_DISPONIBLES.includes(word)) {
-        newPlaylist.push(`/señas/palabras/${word}.gif`)
+        // Guardamos el .gif para palabras y su etiqueta
+        newPlaylist.push({ url: `/señas/palabras/${word}.gif`, label: word })
       } else {
         for (const letter of word) {
           if (/[a-z]/.test(letter)) {
-            newPlaylist.push(`/señas/letras/${letter}.png`)
+            // Guardamos el .jpeg para letras y su etiqueta
+            newPlaylist.push({ url: `/señas/letras/${letter}.jpeg`, label: letter })
           }
         }
       }
     }
 
     setPlaylist(newPlaylist)
-    setCurrentSignIndex(0)
-    setIsPlaying(true)
   }
 
   // Reproductor visual (Cambia el GIF cada 1.5s)
@@ -586,40 +584,47 @@ export default function App() {
               </button>
             </div>
 
-            <div className={`aspect-video rounded-xl overflow-hidden relative flex items-center justify-center border ${
-              theme === 'dark' ? 'bg-black border-gray-800' : 'bg-gray-100 border-gray-200'
+            {/* Carrusel de Señas */}
+            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${
+              theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-200'
             }`}>
-              {isPlaying && currentSignIndex < playlist.length ? (
-                <img 
-                  key={currentSignIndex} 
-                  src={playlist[currentSignIndex]} 
-                  alt="Seña en reproducción" 
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                    <Keyboard size={40} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
-                  </div>
-                  <p className={`font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                    {playlist.length === 0 && !isPlaying 
-                      ? 'El avatar virtual aparecerá aquí' 
-                      : 'Traducción finalizada'}
-                  </p>
-                </div>
-              )}
-              
-              {playlist.length > 0 && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 flex-wrap px-4">
-                  {playlist.map((_, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all ${
-                      i === currentSignIndex 
-                        ? 'w-6 bg-indigo-500' 
-                        : i < currentSignIndex 
-                          ? 'w-2 bg-indigo-500/50' 
-                          : 'w-2 bg-gray-600/50'
-                    }`} />
+              {playlist.length > 0 ? (
+                <div 
+                  className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center"
+                  style={{ scrollbarWidth: 'thin' }}
+                >
+                  {playlist.map((item, index) => (
+                    <div 
+                      key={index} 
+                      className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${
+                        theme === 'dark' 
+                          ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50' 
+                          : 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
+                      }`}
+                    >
+                      <img 
+                        src={item.url} 
+                        alt={`Seña para ${item.label}`} 
+                        className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${
+                          theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                        }`}
+                      />
+                      <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                      }`}>
+                        {item.label}
+                      </span>
+                    </div>
                   ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-full gap-4 opacity-70">
+                  <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                    <Keyboard size={48} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
+                  </div>
+                  <p className={`font-medium text-lg ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                    Tu traducción aparecerá aquí
+                  </p>
                 </div>
               )}
             </div>
