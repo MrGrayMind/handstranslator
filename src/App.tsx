@@ -527,7 +527,7 @@ export default function App() {
           }`}>
             <button
               onClick={() => handleModeChange('sequence')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 mode === 'sequence'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : theme === 'dark' 
@@ -540,7 +540,7 @@ export default function App() {
             </button>
             <button
               onClick={() => handleModeChange('video')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 mode === 'video'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : theme === 'dark' 
@@ -683,7 +683,7 @@ export default function App() {
               {/* Camera toggle */}
               <button
                 onClick={toggleCamera}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${
                   cameraOn
                     ? theme === 'dark' 
                       ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' 
@@ -705,7 +705,7 @@ export default function App() {
                 <button
                   onClick={handleSequenceCapture}
                   disabled={!cameraOn}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
+                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
                     theme === 'dark' 
                       ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' 
                       : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'
@@ -717,7 +717,7 @@ export default function App() {
                 <button
                   onClick={isCapturing ? stopCapture : startVideoCapture}
                   disabled={!cameraOn && !isCapturing}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
+                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
                     isCapturing
                       ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
                       : theme === 'dark'
@@ -737,7 +737,7 @@ export default function App() {
               <button
                 onClick={processFrames}
                 disabled={processing || frames.length === 0}
-                className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
+                className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${
                   theme === 'dark'
                     ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-purple-600/20'
                     : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-purple-600/20'
@@ -754,7 +754,7 @@ export default function App() {
               <button
                 onClick={clearFrames}
                 disabled={frames.length === 0}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${
                   theme === 'dark'
                     ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700 disabled:bg-gray-900 disabled:text-gray-700 disabled:border-gray-800'
                     : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm disabled:shadow-none'
