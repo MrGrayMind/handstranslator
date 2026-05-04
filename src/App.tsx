@@ -48,6 +48,7 @@ interface UserLimits {
 // 🛠️ DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
 const PALABRAS_DISPONIBLES = []
 
+
 export default function App() {
   // ── Auth state ──
   const [user, setUser] = useState<User | null>(null)
@@ -65,8 +66,8 @@ export default function App() {
 
   // 🛠️ ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
-  // Ahora guardamos la URL y también la etiqueta (letra o palabra)
-  const [playlist, setPlaylist] = useState<{ url: string; label: string }[]>([])
+  // Añadimos 'isSpace' al tipo de dato
+  const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
 
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
@@ -259,25 +260,31 @@ export default function App() {
   // ════════════════════════════════════════════
   const handleTextToSign = () => {
     if (!inputText.trim()) return
-    setPlaylist([]) // Limpiar carrusel anterior
+    setPlaylist([]) 
 
-    // Limpiar texto: minúsculas, quitar acentos y caracteres raros
     const cleanText = inputText.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
-    const words = cleanText.split(' ')
+    // 🛠️ Dividimos por uno o MÁS espacios seguidos
+    const words = cleanText.split(/\s+/) 
 
-    let newPlaylist: { url: string; label: string }[] = []
+    let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
 
-    for (const word of words) {
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      if (!word) continue // Evita bugs si hay espacios al inicio o final
+
       if (PALABRAS_DISPONIBLES.includes(word)) {
-        // Guardamos el .gif para palabras y su etiqueta
-        newPlaylist.push({ url: `/señas/palabras/${word}.gif`, label: word })
+        newPlaylist.push({ isSpace: false, url: `/señas/palabras/${word}.gif`, label: word })
       } else {
         for (const letter of word) {
           if (/[A-Z]/.test(letter)) {
-            // Guardamos el .png para letras y su etiqueta
-            newPlaylist.push({ url: `/señas/letras/${letter}.png`, label: letter })
+            newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
           }
         }
+      }
+
+      // 🛠️ Añadir tarjeta de ESPACIO si NO es la última palabra
+      if (i < words.length - 1) {
+        newPlaylist.push({ isSpace: true, url: '', label: '' })
       }
     }
 
@@ -577,27 +584,44 @@ export default function App() {
                   style={{ scrollbarWidth: 'thin' }}
                 >
                   {playlist.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${
-                        theme === 'dark' 
-                          ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50' 
-                          : 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
-                      }`}
-                    >
-                      <img 
-                        src={item.url} 
-                        alt={`Seña para ${item.label}`} 
-                        className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${
-                          theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                    item.isSpace ? (
+                      /* 🛠️ TARJETA DE ESPACIO VACÍO */
+                      <div 
+                        key={index} 
+                        className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${
+                          theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
                         }`}
-                      />
-                      <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${
-                        theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
-                      }`}>
-                        {item.label}
-                      </span>
-                    </div>
+                      >
+                        <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${
+                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        }`}>
+                          Espacio
+                        </span>
+                      </div>
+                    ) : (
+                      /* 🛠️ TARJETA DE SEÑA NORMAL */
+                      <div 
+                        key={index} 
+                        className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${
+                          theme === 'dark' 
+                            ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50' 
+                            : 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
+                        }`}
+                      >
+                        <img 
+                          src={item.url} 
+                          alt={`Seña para ${item.label}`} 
+                          className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${
+                            theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                          }`}
+                        />
+                        <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${
+                          theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                        }`}>
+                          {item.label}
+                        </span>
+                      </div>
+                    )
                   ))}
                 </div>
               ) : (
