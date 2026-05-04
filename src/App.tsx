@@ -23,7 +23,9 @@ import {
   X,
   MessageSquare,
   Send,
-  Volume2
+  Volume2,
+  Sun,
+  Moon,
 } from 'lucide-react'
 
 type Mode = 'sequence' | 'video'
@@ -54,6 +56,7 @@ export default function App() {
   const [processing, setProcessing] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [captureCountdown, setCaptureCountdown] = useState(0)
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
@@ -447,34 +450,55 @@ export default function App() {
   //  RENDER
   // ════════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
+    }`}>
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
 
       {/* ═══════════ HEADER ═══════════ */}
-      <header className="sticky top-0 z-40 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800">
+      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200 shadow-sm'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-xl">
+              <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-600/20">
                 <Hand size={24} className="text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
                 HandsTranslator
               </span>
             </div>
 
-            {/* User controls */}
-            <div className="flex items-center gap-3">
+            {/* User controls & Theme Toggle */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* 🛠️ Botón de Tema */}
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className={`p-2.5 rounded-xl transition-all border ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800/50 border-gray-700 text-yellow-400 hover:bg-gray-800' 
+                    : 'bg-gray-100 border-gray-200 text-indigo-600 hover:bg-gray-200'
+                }`}
+                title={theme === 'dark' ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
               {user ? (
                 <>
-                  <span className="hidden sm:block text-sm text-gray-400">
+                  <span className={`hidden sm:block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                     {user.user_metadata?.username || user.email}
                   </span>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all text-sm"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium ${
+                      theme === 'dark' 
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
+                        : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+                    }`}
                   >
                     <LogOut size={18} />
                     <span className="hidden sm:inline">Salir</span>
@@ -486,7 +510,7 @@ export default function App() {
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium text-sm shadow-lg shadow-indigo-600/25"
                 >
                   <UserIcon size={18} />
-                  Iniciar Sesión
+                  <span className="hidden sm:inline">Iniciar Sesión</span>
                 </button>
               )}
             </div>
@@ -495,16 +519,20 @@ export default function App() {
       </header>
 
       {/* ═══════════ MAIN CONTENT ═══════════ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ── Mode Selector ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex bg-gray-900 rounded-xl p-1.5 border border-gray-800">
+          <div className={`flex rounded-xl p-1.5 border transition-colors ${
+            theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+          }`}>
             <button
               onClick={() => handleModeChange('sequence')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 mode === 'sequence'
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : theme === 'dark' 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <Layers size={16} />
@@ -514,8 +542,10 @@ export default function App() {
               onClick={() => handleModeChange('video')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 mode === 'video'
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : theme === 'dark' 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <Video size={16} />
@@ -525,18 +555,20 @@ export default function App() {
 
           {/* User limits info */}
           {user && limits && (
-            <div className="flex items-center gap-2 text-xs">
+            <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            }`}>
               {limits.can_use ? (
                 <>
-                  <ShieldCheck size={14} className="text-green-400" />
-                  <span className="text-gray-400">
+                  <ShieldCheck size={14} className="text-green-500" />
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                     Máx. {limits.limits.max_frames} frames · {limits.limits.max_duration_s}s video
                   </span>
                 </>
               ) : (
                 <>
-                  <AlertTriangle size={14} className="text-yellow-400" />
-                  <span className="text-yellow-400">{limits.reason}</span>
+                  <AlertTriangle size={14} className="text-yellow-500" />
+                  <span className="text-yellow-600 dark:text-yellow-400">{limits.reason}</span>
                 </>
               )}
             </div>
@@ -548,8 +580,10 @@ export default function App() {
           {/* ═══ LEFT: Camera Area ═══ */}
           <div className="lg:col-span-2 space-y-4">
             {/* Camera Feed */}
-            <div className="relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-              <div className="aspect-video bg-gray-900 relative flex items-center justify-center">
+            <div className={`relative rounded-2xl border overflow-hidden transition-colors ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
+            }`}>
+              <div className="aspect-video relative flex items-center justify-center bg-black">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -559,19 +593,19 @@ export default function App() {
                 />
                 {!cameraOn && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                    <div className="bg-gray-800 p-6 rounded-full">
-                      <Camera size={48} className="text-gray-600" />
+                    <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
+                      <Camera size={48} className="text-gray-500" />
                     </div>
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-gray-400 text-sm font-medium">
                       Enciende la cámara para comenzar
                     </p>
                   </div>
                 )}
                 {/* Recording indicator */}
                 {isCapturing && (
-                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
                     <CircleDot size={12} className="text-white animate-pulse" />
-                    <span className="text-white text-xs font-medium">
+                    <span className="text-white text-xs font-bold">
                       REC {captureCountdown}s
                     </span>
                   </div>
@@ -580,11 +614,13 @@ export default function App() {
             </div>
 
             {/* ── Frame Carousel ── */}
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+            <div className={`rounded-2xl border p-4 transition-colors ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            }`}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-300">
+                <h3 className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Frames capturados
-                  <span className="ml-2 text-xs text-gray-500">
+                  <span className={`ml-2 text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                     ({frames.length} {frames.length === 1 ? 'frame' : 'frames'})
                   </span>
                 </h3>
@@ -592,50 +628,49 @@ export default function App() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => scrollCarousel('left')}
-                      className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                      className={`p-1 rounded-lg transition-colors ${
+                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
                     >
-                      <ChevronLeft size={16} />
+                      <ChevronLeft size={18} />
                     </button>
                     <button
                       onClick={() => scrollCarousel('right')}
-                      className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                      className={`p-1 rounded-lg transition-colors ${
+                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
                     >
-                      <ChevronRight size={16} />
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                 )}
               </div>
 
               {frames.length === 0 ? (
-                <div className="py-8 text-center text-gray-600 text-sm">
+                <div className={`py-8 text-center text-sm font-medium ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
                   Los frames capturados aparecerán aquí
                 </div>
               ) : (
                 <div
                   ref={carouselRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-thin pb-2"
+                  className="flex gap-3 overflow-x-auto scrollbar-thin pb-2"
                   style={{ scrollbarWidth: 'thin' }}
                 >
                   {frames.map((frame, index) => (
-                    <div
-                      key={index}
-                      className="flex-shrink-0 relative group"
-                    >
+                    <div key={index} className="flex-shrink-0 relative group">
                       <img
                         src={frame}
                         alt={`Frame ${index + 1}`}
-                        className="w-24 h-18 object-cover rounded-lg border border-gray-700"
+                        className={`w-24 h-18 object-cover rounded-xl border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}
                       />
-                      <div className="absolute bottom-1 left-1 bg-black/70 text-[10px] text-gray-300 px-1.5 py-0.5 rounded">
+                      <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-sm text-[10px] text-white font-bold px-1.5 py-0.5 rounded-md">
                         {index + 1}
                       </div>
                       <button
-                        onClick={() =>
-                          setFrames((prev) => prev.filter((_, i) => i !== index))
-                        }
-                        className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setFrames((prev) => prev.filter((_, i) => i !== index))}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                       >
-                        <X size={10} />
+                        <X size={12} />
                       </button>
                     </div>
                   ))}
@@ -648,22 +683,20 @@ export default function App() {
               {/* Camera toggle */}
               <button
                 onClick={toggleCamera}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border ${
                   cameraOn
-                    ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20'
-                    : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                    ? theme === 'dark' 
+                      ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' 
+                      : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                    : theme === 'dark'
+                      ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'
+                      : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
                 }`}
               >
                 {cameraOn ? (
-                  <>
-                    <CameraOff size={16} />
-                    Apagar cámara
-                  </>
+                  <><CameraOff size={18} /> Apagar cámara</>
                 ) : (
-                  <>
-                    <Camera size={16} />
-                    Encender cámara
-                  </>
+                  <><Camera size={18} /> Encender cámara</>
                 )}
               </button>
 
@@ -672,31 +705,30 @@ export default function App() {
                 <button
                   onClick={handleSequenceCapture}
                   disabled={!cameraOn}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-indigo-600/25 disabled:shadow-none"
+                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
+                    theme === 'dark' 
+                      ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'
+                  } disabled:shadow-none border-none`}
                 >
-                  <CircleDot size={16} />
-                  Capturar
+                  <CircleDot size={18} /> Capturar
                 </button>
               ) : (
                 <button
                   onClick={isCapturing ? stopCapture : startVideoCapture}
                   disabled={!cameraOn && !isCapturing}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
                     isCapturing
-                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
-                      : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 text-white shadow-lg shadow-indigo-600/25 disabled:shadow-none'
-                  }`}
+                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
+                      : theme === 'dark'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20'
+                        : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'
+                  } disabled:shadow-none border-none`}
                 >
                   {isCapturing ? (
-                    <>
-                      <Square size={16} />
-                      Detener ({captureCountdown}s)
-                    </>
+                    <><Square size={18} /> Detener ({captureCountdown}s)</>
                   ) : (
-                    <>
-                      <CircleDot size={16} />
-                      Iniciar captura
-                    </>
+                    <><CircleDot size={18} /> Iniciar captura</>
                   )}
                 </button>
               )}
@@ -705,18 +737,16 @@ export default function App() {
               <button
                 onClick={processFrames}
                 disabled={processing || frames.length === 0}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-purple-600/25 disabled:shadow-none"
+                className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg ${
+                  theme === 'dark'
+                    ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-purple-600/20'
+                    : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-purple-600/20'
+                } disabled:shadow-none border-none`}
               >
                 {processing ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Procesando...
-                  </>
+                  <><Loader2 size={18} className="animate-spin" /> Procesando...</>
                 ) : (
-                  <>
-                    <Zap size={16} />
-                    Procesar
-                  </>
+                  <><Zap size={18} /> Procesar</>
                 )}
               </button>
 
@@ -724,71 +754,86 @@ export default function App() {
               <button
                 onClick={clearFrames}
                 disabled={frames.length === 0}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300 rounded-xl font-medium text-sm transition-all border border-gray-700 disabled:border-gray-800"
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border ${
+                  theme === 'dark'
+                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700 disabled:bg-gray-900 disabled:text-gray-700 disabled:border-gray-800'
+                    : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm disabled:shadow-none'
+                }`}
               >
-                <Trash2 size={16} />
-                Limpiar
+                <Trash2 size={18} /> Limpiar
               </button>
             </div>
           </div>
 
           {/* ═══ RIGHT: Results Panel ═══ */}
           <div className="lg:col-span-1">
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6 sticky top-24">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Zap size={18} className="text-indigo-400" />
+            <div className={`rounded-2xl border p-6 sticky top-24 transition-colors ${
+              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <Zap size={20} className="text-indigo-500" />
                 Resultado
               </h3>
 
               {processing ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <Loader2 size={40} className="text-indigo-400 animate-spin" />
-                  <p className="text-gray-400 text-sm text-center">
+                  <Loader2 size={40} className="text-indigo-500 animate-spin" />
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     Procesando frames con IA...
                   </p>
-                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                    <div className="bg-indigo-600 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
+                  <div className={`w-full rounded-full h-1.5 overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                    <div className="bg-indigo-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
                   </div>
                 </div>
               ) : result ? (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* Main result */}
-                  <div className="bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-xl p-5 text-center">
-                    <p className="text-sm text-gray-400 mb-1">Traducción</p>
-                    <p className="text-3xl font-bold text-white">
-                      {result.resultado}
+                  <div className={`border rounded-xl p-6 text-center relative ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-indigo-500/30' 
+                      : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-inner'
+                  }`}>
+                    <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-600'}`}>
+                      Traducción
                     </p>
-                    <button
-                      onClick={() => speak(result.resultado)}
-                      className="p-2 text-indigo-400 hover:text-white hover:bg-indigo-500/20 rounded-full transition-all"
-                      title="Escuchar respuesta"
-                    >
-                    <Volume2 size={24} />
-                    </button>
+                    <div className="flex items-center justify-center gap-3">
+                      <p className={`text-4xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {result.resultado}
+                      </p>
+                      <button
+                        onClick={() => speak(result.resultado)}
+                        className={`p-2 rounded-full transition-all ${
+                          theme === 'dark' ? 'text-indigo-400 hover:text-white hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'
+                        }`}
+                        title="Escuchar respuesta"
+                      >
+                        <Volume2 size={24} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Badges */}
-                  <div className="flex gap-2">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium border ${getTypeColor(result.tipo)}`}
-                    >
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getTypeColor(result.tipo)}`}>
                       {result.tipo}
                     </span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium border ${getConfidenceColor(result.confianza)}`}
-                    >
+                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getConfidenceColor(result.confianza)}`}>
                       Confianza: {result.confianza}
                     </span>
                   </div>
 
                   {/* Bloque de Análisis de Movimiento */}
                   {result.analisis_movimiento && (
-                    <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 mt-4">
-                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <div className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse" />
+                    <div className={`border rounded-xl p-5 mt-4 ${
+                      theme === 'dark' ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 ${
+                        theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                      }`}>
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
                         Razonamiento de la IA
                       </p>
-                      <p className="text-sm text-gray-300 leading-relaxed italic">
+                      <p className={`text-sm leading-relaxed italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         "{result.analisis_movimiento}"
                       </p>
                     </div>
@@ -797,27 +842,30 @@ export default function App() {
                   {/* Alternatives */}
                   {result.alternativas && result.alternativas.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-gray-400 mb-2">
+                      <p className={`text-sm font-bold mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                         Alternativas
                       </p>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {result.alternativas.map((alt, index) => (
                           <div
                             key={index}
-                            className="flex items-center gap-2 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2"
+                            className={`flex items-center justify-between border rounded-lg px-4 py-2.5 ${
+                              theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'
+                            }`}
                           >
-                            <CheckCircle
-                              size={14}
-                              className="text-gray-500 flex-shrink-0"
-                            />
-                            <span className="text-sm text-gray-300">
-                              {alt.seña}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <CheckCircle size={16} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
+                              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                                {alt.seña}
+                              </span>
+                            </div>
                             <button
                               onClick={() => speak(alt.seña)}
-                              className="p-1 text-gray-500 hover:text-indigo-400 transition-colors"
+                              className={`p-1.5 rounded-md transition-colors ${
+                                theme === 'dark' ? 'text-gray-400 hover:text-indigo-400 hover:bg-gray-700' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
+                              }`}
                             >
-                              <Volume2 size={14} />
+                              <Volume2 size={16} />
                             </button>
                           </div>
                         ))}
@@ -827,16 +875,16 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="bg-gray-800 p-4 rounded-full">
-                    <Zap size={32} className="text-gray-600" />
+                  <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                    <Zap size={32} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
                   </div>
-                  <p className="text-gray-500 text-sm text-center">
+                  <p className={`text-sm font-medium text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                     Los resultados aparecerán aquí
                     <br />
                     después de procesar los frames
                   </p>
                   {!user && (
-                    <p className="text-indigo-400/60 text-xs text-center mt-2">
+                    <p className="text-indigo-500 text-xs font-bold text-center mt-2">
                       Inicia sesión para procesar
                     </p>
                   )}
@@ -848,41 +896,57 @@ export default function App() {
       </main>
 
       {/* ═══════════ SECCIÓN EDUCATIVA ═══════════ */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-gray-900">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Aprende sobre la LSM</h2>
-          <p className="text-gray-400 max-w-2xl mx-auto">
+      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
+        theme === 'dark' ? 'border-gray-900' : 'border-gray-200'
+      }`}>
+        <div className="text-center mb-16">
+          <h2 className={`text-3xl md:text-4xl font-extrabold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Aprende sobre la LSM
+          </h2>
+          <p className={`max-w-2xl mx-auto text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             La Lengua de Señas Mexicana es más que solo manos; es cultura, identidad y gramática propia.
           </p>
         </div>
       
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-indigo-500/50 transition-colors group">
-            <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <Layers size={24} className="text-indigo-400" />
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
+            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-indigo-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-indigo-300'
+          }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+              theme === 'dark' ? 'bg-indigo-600/20' : 'bg-indigo-100'
+            }`}>
+              <Layers size={28} className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'} />
             </div>
-            <h3 className="text-xl font-bold mb-3">Dactilología</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dactilología</h3>
+            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Es el abecedario manual. Se utiliza para deletrear nombres propios, lugares o palabras que no tienen una seña específica. Es el primer paso para cualquier aprendiz.
             </p>
           </div>
       
-          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-purple-500/50 transition-colors group">
-            <div className="w-12 h-12 bg-purple-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <Hand size={24} className="text-purple-400" />
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
+            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-purple-300'
+          }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+              theme === 'dark' ? 'bg-purple-600/20' : 'bg-purple-100'
+            }`}>
+              <Hand size={28} className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'} />
             </div>
-            <h3 className="text-xl font-bold mb-3">Ideogramas</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ideogramas</h3>
+            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               A diferencia del deletreo, una sola seña representa un concepto o palabra completa (ej. "Casa", "Familia"). Estas señas involucran configuración, movimiento y gesticulación.
             </p>
           </div>
       
-          <div className="bg-gray-900/50 p-8 rounded-3xl border border-gray-800 hover:border-pink-500/50 transition-colors group">
-            <div className="w-12 h-12 bg-pink-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <ShieldCheck size={24} className="text-pink-400" />
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
+            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-pink-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-pink-300'
+          }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+              theme === 'dark' ? 'bg-pink-600/20' : 'bg-pink-100'
+            }`}>
+              <ShieldCheck size={28} className={theme === 'dark' ? 'text-pink-400' : 'text-pink-600'} />
             </div>
-            <h3 className="text-xl font-bold mb-3">Mitos Comunes</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mitos Comunes</h3>
+            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               La lengua de señas NO es universal. Cada país tiene la suya (LSM en México, LSE en España, ASL en EE.UU.). Tampoco es una mímica simplificada, es un idioma completo.
             </p>
           </div>
@@ -891,13 +955,23 @@ export default function App() {
       
       {/* ═══════════ FORMULARIO DE COMUNIDAD ═══════════ */}
       <section className="max-w-4xl mx-auto px-4 pb-24">
-        <div className="bg-gradient-to-br from-gray-900 to-indigo-900/20 rounded-[2.5rem] p-8 md:p-12 border border-indigo-500/20 relative overflow-hidden">
+        <div className={`rounded-[2.5rem] p-8 md:p-12 border relative overflow-hidden transition-colors ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-br from-gray-900 to-indigo-900/20 border-indigo-500/20' 
+            : 'bg-gradient-to-br from-white to-indigo-50/50 border-indigo-200 shadow-2xl shadow-indigo-100/50'
+        }`}>
           {/* Decoración de fondo */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl" />
+          <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl ${
+            theme === 'dark' ? 'bg-indigo-600/10' : 'bg-indigo-300/30'
+          }`} />
           
           <div className="relative z-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Queremos conocerte</h2>
-            <p className="text-gray-400 mb-8">Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.</p>
+            <h2 className={`text-3xl font-extrabold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Queremos conocerte
+            </h2>
+            <p className={`mb-10 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.
+            </p>
       
             <form 
                 onSubmit={async (e) => {
@@ -905,7 +979,6 @@ export default function App() {
                   const formData = new FormData(e.currentTarget);
                   const payload = Object.fromEntries(formData.entries());
                   
-                  // 1. Validar que el usuario esté logueado
                   if (!user) {
                     alert('Debes iniciar sesión para enviar tus comentarios.');
                     setAuthModalOpen(true);
@@ -913,31 +986,31 @@ export default function App() {
                   }
               
                   try {
-                    // 2. Llamar a la Edge Function 'form'
-                    const { data, error } = await supabase.functions.invoke('form', {
-                      body: payload, // Enviamos los datos directamente
-                    });
-              
+                    const { error } = await supabase.functions.invoke('form', { body: payload });
                     if (error) throw error;
-              
                     alert('¡Gracias! Tus respuestas se han guardado correctamente.');
-                    (e.target as HTMLFormElement).reset(); // Limpiar formulario
-              
+                    (e.target as HTMLFormElement).reset();
                   } catch (err: any) {
                     console.error('Error al enviar formulario:', err);
                     alert('Hubo un error al enviar tus respuestas. Por favor, intenta más tarde.');
                   }
                 }}
-                className="space-y-6"
+                className="space-y-8"
               >
               {/* Pregunta 1 */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-200">¿Tienes algún familiar que use lengua de señas?</label>
+              <div className="space-y-4">
+                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                  ¿Tienes algún familiar que use lengua de señas?
+                </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {['Sí, cercano', 'Sí, lejano', 'No'].map((opcion) => (
                     <label key={opcion} className="relative">
                       <input type="radio" name="familiar" value={opcion} className="peer sr-only" required />
-                      <div className="p-3 text-center text-sm bg-gray-800 border border-gray-700 rounded-xl cursor-pointer peer-checked:bg-indigo-600 peer-checked:border-indigo-400 transition-all">
+                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${
+                        theme === 'dark' 
+                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700' 
+                          : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
+                      }`}>
                         {opcion}
                       </div>
                     </label>
@@ -946,9 +1019,15 @@ export default function App() {
               </div>
       
               {/* Pregunta 2 */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-200">¿Cuál es tu nivel de conocimiento en LSM?</label>
-                <select name="nivel" className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 transition-colors">
+              <div className="space-y-4">
+                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                  ¿Cuál es tu nivel de conocimiento en LSM?
+                </label>
+                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500' 
+                    : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 shadow-sm'
+                }`}>
                   <option value="ninguno">Ninguno</option>
                   <option value="basico">Básico (Abecedario)</option>
                   <option value="intermedio">Intermedio (Conversación fluida)</option>
@@ -957,13 +1036,19 @@ export default function App() {
               </div>
       
               {/* Pregunta 3 */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-200">¿Conoces a alguien que le pueda resultar útil esta página?</label>
+              <div className="space-y-4">
+                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                  ¿Conoces a alguien que le pueda resultar útil esta página?
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   {['Sí, mucho', 'Tal vez alguien'].map((opcion) => (
                     <label key={opcion} className="relative">
                       <input type="radio" name="utilidad" value={opcion} className="peer sr-only" />
-                      <div className="p-3 text-center text-sm bg-gray-800 border border-gray-700 rounded-xl cursor-pointer peer-checked:bg-indigo-600 peer-checked:border-indigo-400 transition-all">
+                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${
+                        theme === 'dark' 
+                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700' 
+                          : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
+                      }`}>
                         {opcion}
                       </div>
                     </label>
@@ -972,19 +1057,29 @@ export default function App() {
               </div>
       
               {/* Pregunta Abierta */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-200">¿Qué otra función te gustaría ver?</label>
+              <div className="space-y-4">
+                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                  ¿Qué otra función te gustaría ver?
+                </label>
                 <textarea 
                   name="sugerencia"
                   rows={3} 
                   placeholder="Ej: Diccionario visual, curso básico..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 transition-colors"
+                  className={`w-full border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${
+                    theme === 'dark' 
+                      ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500' 
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400 shadow-sm'
+                  }`}
                 />
               </div>
       
               <button
                 type="submit"
-                className="w-full py-4 bg-white text-gray-950 rounded-2xl font-bold hover:bg-indigo-50 transition-all shadow-xl shadow-white/5"
+                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg ${
+                  theme === 'dark' 
+                    ? 'bg-white text-gray-950 hover:bg-gray-100 shadow-white/10' 
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/25'
+                }`}
               >
                 Enviar respuestas
               </button>
@@ -994,13 +1089,15 @@ export default function App() {
       </section>
       
       {/* ═══════════ FOOTER ═══════════ */}
-      <footer className="bg-gray-900 border-t border-gray-800 py-12 text-center">
+      <footer className={`border-t py-12 text-center transition-colors ${
+        theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+      }`}>
         <div className="flex justify-center gap-6 mb-6">
-          <Hand className="text-gray-500" size={20} />
-          <ShieldCheck className="text-gray-500" size={20} />
-          <Layers className="text-gray-500" size={20} />
+          <Hand className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
+          <ShieldCheck className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
+          <Layers className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
         </div>
-        <p className="text-gray-500 text-xs">
+        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
           © 2026 HandsTranslator. Tecnología con impacto social.
         </p>
       </footer>
