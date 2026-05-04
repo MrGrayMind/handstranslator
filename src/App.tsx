@@ -46,7 +46,7 @@ interface UserLimits {
 }
 
 // 🛠️ DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
-const PALABRAS_DISPONIBLES = ['hola', 'gracias', 'ayuda', 'nombre', 'por favor']
+const PALABRAS_DISPONIBLES = []
 
 export default function App() {
   // ── Auth state ──
@@ -275,7 +275,7 @@ export default function App() {
       } else {
         for (const letter of word) {
           if (/[a-z]/.test(letter)) {
-            newPlaylist.push(`/señas/letras/${letter}.gif`)
+            newPlaylist.push(`/señas/letras/${letter}.png`)
           }
         }
       }
