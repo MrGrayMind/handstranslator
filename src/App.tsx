@@ -1075,7 +1075,7 @@ export default function App() {
       
               <button
                 type="submit"
-                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg ${
+                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg cursor-pointer ${
                   theme === 'dark' 
                     ? 'bg-white text-gray-950 hover:bg-gray-100 shadow-white/10' 
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/25'
