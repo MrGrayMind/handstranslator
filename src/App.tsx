@@ -284,23 +284,6 @@ export default function App() {
     setPlaylist(newPlaylist)
   }
 
-  // Reproductor visual (Cambia el GIF cada 1.5s)
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
-    
-    if (isPlaying && playlist.length > 0) {
-      if (currentSignIndex < playlist.length) {
-        timer = setTimeout(() => {
-          setCurrentSignIndex(prev => prev + 1)
-        }, 1500) 
-      } else {
-        setIsPlaying(false)
-      }
-    }
-
-    return () => clearTimeout(timer)
-  }, [isPlaying, currentSignIndex, playlist])
-
   // ════════════════════════════════════════════
   //  CHANGE MODE
   // ════════════════════════════════════════════
