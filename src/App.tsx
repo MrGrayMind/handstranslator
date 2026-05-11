@@ -26,10 +26,9 @@ import {
   Volume2,
   Sun,
   Moon,
-  Keyboard, // 🛠️ Importamos el icono para el modo texto
+  Keyboard,
 } from 'lucide-react'
 
-// 🛠️ Añadimos 'text' a los modos disponibles
 type Mode = 'sequence' | 'video' | 'text'
 
 interface TranslationResult {
@@ -45,7 +44,7 @@ interface UserLimits {
   max_duration_s: number
 }
 
-// 🛠️ DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
+// DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
 const PALABRAS_DISPONIBLES = []
 
 
@@ -64,7 +63,7 @@ export default function App() {
   const [captureCountdown, setCaptureCountdown] = useState(0)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
-  // 🛠️ ── Estados para Texto a Señas ──
+  // ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
   // Añadimos 'isSpace' al tipo de dato
   const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
@@ -263,7 +262,7 @@ export default function App() {
     setPlaylist([]) 
 
     const cleanText = inputText.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
-    // 🛠️ Dividimos por uno o MÁS espacios seguidos
+    // Dividimos por uno o MÁS espacios seguidos
     const words = cleanText.split(/\s+/) 
 
     let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
@@ -282,7 +281,7 @@ export default function App() {
         }
       }
 
-      // 🛠️ Añadir tarjeta de ESPACIO si NO es la última palabra
+      // Añadir tarjeta de ESPACIO si NO es la última palabra
       if (i < words.length - 1) {
         newPlaylist.push({ isSpace: true, url: '', label: '' })
       }
@@ -508,7 +507,7 @@ export default function App() {
               <Video size={16} />
               Video
             </button>
-            {/* 🛠️ NUEVO BOTÓN TEXTO A SEÑAS */}
+            {/* BOTÓN TEXTO A SEÑAS */}
             <button
               onClick={() => handleModeChange('text')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
@@ -585,7 +584,7 @@ export default function App() {
                 >
                   {playlist.map((item, index) => (
                     item.isSpace ? (
-                      /* 🛠️ TARJETA DE ESPACIO VACÍO */
+                      /* TARJETA DE ESPACIO VACÍO */
                       <div 
                         key={index} 
                         className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${
@@ -599,7 +598,7 @@ export default function App() {
                         </span>
                       </div>
                     ) : (
-                      /* 🛠️ TARJETA DE SEÑA NORMAL */
+                      /* TARJETA DE SEÑA NORMAL */
                       <div 
                         key={index} 
                         className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${
