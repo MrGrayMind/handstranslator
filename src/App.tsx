@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import AuthModal from './components/AuthModal'
+import ProfileModal from './components/ProfileModal'
 import {
   User as UserIcon,
   LogOut,
@@ -52,6 +53,7 @@ export default function App() {
   // ── Auth state ──
   const [user, setUser] = useState<User | null>(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   // ── App state ──
   const [mode, setMode] = useState<Mode>('sequence')
@@ -217,7 +219,7 @@ export default function App() {
 
     clearFrames()
     setIsCapturing(true)
-    
+
     const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
     const maxDuration = limits?.limits.max_duration_s || 5
     let frameCount = 0
@@ -259,11 +261,11 @@ export default function App() {
   // ════════════════════════════════════════════
   const handleTextToSign = () => {
     if (!inputText.trim()) return
-    setPlaylist([]) 
+    setPlaylist([])
 
     const cleanText = inputText.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     // Dividimos por uno o MÁS espacios seguidos
-    const words = cleanText.split(/\s+/) 
+    const words = cleanText.split(/\s+/)
 
     let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
 
@@ -297,12 +299,12 @@ export default function App() {
     if (mode !== newMode) {
       setMode(newMode)
       clearFrames()
-      if (isCapturing) stopCapture() 
+      if (isCapturing) stopCapture()
       // Si entramos a modo texto, apagamos la cámara
       if (newMode === 'text' && cameraOn) stopCamera()
     }
   }
-  
+
   // ════════════════════════════════════════════
   //  PROCESS FRAMES
   // ════════════════════════════════════════════
@@ -398,10 +400,10 @@ export default function App() {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     const voices = window.speechSynthesis.getVoices()
-    const bestVoice = voices.find(v => v.lang.includes('es') && v.name.includes('Google')) 
-                   || voices.find(v => v.lang.includes('es')) 
-                   || voices[0]
-  
+    const bestVoice = voices.find(v => v.lang.includes('es') && v.name.includes('Google'))
+      || voices.find(v => v.lang.includes('es'))
+      || voices[0]
+
     if (bestVoice) utterance.voice = bestVoice
     utterance.volume = 0.8
     utterance.lang = 'es-MX'
@@ -413,16 +415,14 @@ export default function App() {
   //  RENDER
   // ════════════════════════════════════════════
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
-    }`}>
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
+      }`}>
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
 
       {/* ═══════════ HEADER ═══════════ */}
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200 shadow-sm'
-      }`}>
+      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200 shadow-sm'
+        }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -437,11 +437,10 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`p-2.5 rounded-xl transition-all border cursor-pointer ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800/50 border-gray-700 text-yellow-400 hover:bg-gray-800' 
+                className={`p-2.5 rounded-xl transition-all border cursor-pointer ${theme === 'dark'
+                    ? 'bg-gray-800/50 border-gray-700 text-yellow-400 hover:bg-gray-800'
                     : 'bg-gray-100 border-gray-200 text-indigo-600 hover:bg-gray-200'
-                }`}
+                  }`}
                 title={theme === 'dark' ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -449,16 +448,23 @@ export default function App() {
 
               {user ? (
                 <>
-                  <span className={`hidden sm:block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {user.user_metadata?.username || user.email}
-                  </span>
+                  <button
+                    onClick={() => setProfileModalOpen(true)}
+                    className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${theme === 'dark'
+                        ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                      }`}
+                    title="Editar Perfil"
+                  >
+                    <UserIcon size={16} />
+                    <span className="max-w-[120px] truncate">{user.user_metadata?.username || user.email}</span>
+                  </button>
                   <button
                     onClick={handleLogout}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${
-                      theme === 'dark' 
-                        ? 'text-gray-400 hover:text-white hover:bg-gray-800' 
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${theme === 'dark'
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
                         : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
-                    }`}
+                      }`}
                   >
                     <LogOut size={18} />
                     <span className="hidden sm:inline">Salir</span>
@@ -482,27 +488,24 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ── Mode Selector ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className={`flex flex-wrap rounded-xl p-1.5 border transition-colors ${
-            theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-          }`}>
+          <div className={`flex flex-wrap rounded-xl p-1.5 border transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            }`}>
             <button
               onClick={() => handleModeChange('sequence')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                mode === 'sequence'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'sequence'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Layers size={16} />
               Secuencia
             </button>
             <button
               onClick={() => handleModeChange('video')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                mode === 'video'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'video'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Video size={16} />
               Video
@@ -510,11 +513,10 @@ export default function App() {
             {/* BOTÓN TEXTO A SEÑAS */}
             <button
               onClick={() => handleModeChange('text')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                mode === 'text'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'text'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Keyboard size={16} />
               Texto a señas
@@ -522,9 +524,8 @@ export default function App() {
           </div>
 
           {user && limits && mode !== 'text' && (
-            <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${
-              theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-            }`}>
+            <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
               {limits.can_use ? (
                 <>
                   <ShieldCheck size={14} className="text-green-500" />
@@ -545,9 +546,8 @@ export default function App() {
         {/* ── Main Workspace ── */}
         {mode === 'text' ? (
           /* ═══════════ VISTA TEXTO A SEÑAS ═══════════ */
-          <div className={`rounded-2xl border p-6 flex flex-col gap-6 transition-colors ${
-            theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-          }`}>
+          <div className={`rounded-2xl border p-6 flex flex-col gap-6 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            }`}>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
@@ -555,68 +555,60 @@ export default function App() {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()}
                 placeholder="Escribe una palabra o frase para traducir a señas..."
-                className={`flex-1 border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500' 
+                className={`flex-1 border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${theme === 'dark'
+                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500'
                     : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400'
-                }`}
+                  }`}
               />
               <button
                 onClick={handleTextToSign}
-                className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg cursor-pointer ${
-                  theme === 'dark' 
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20' 
+                className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg cursor-pointer ${theme === 'dark'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
-                }`}
+                  }`}
               >
                 Traducir
               </button>
             </div>
 
             {/* Carrusel de Señas */}
-            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${
-              theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-200'
-            }`}>
+            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-200'
+              }`}>
               {playlist.length > 0 ? (
-                <div 
+                <div
                   className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center"
                   style={{ scrollbarWidth: 'thin' }}
                 >
                   {playlist.map((item, index) => (
                     item.isSpace ? (
                       /* TARJETA DE ESPACIO VACÍO */
-                      <div 
-                        key={index} 
-                        className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${
-                          theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
-                        }`}
+                      <div
+                        key={index}
+                        className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
+                          }`}
                       >
-                        <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${
-                          theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        }`}>
+                        <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                          }`}>
                           Espacio
                         </span>
                       </div>
                     ) : (
                       /* TARJETA DE SEÑA NORMAL */
-                      <div 
-                        key={index} 
-                        className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${
-                          theme === 'dark' 
-                            ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50' 
+                      <div
+                        key={index}
+                        className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${theme === 'dark'
+                            ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50'
                             : 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
-                        }`}
-                      >
-                        <img 
-                          src={item.url} 
-                          alt={`Seña para ${item.label}`} 
-                          className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${
-                            theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
                           }`}
+                      >
+                        <img
+                          src={item.url}
+                          alt={`Seña para ${item.label}`}
+                          className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                            }`}
                         />
-                        <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${
-                          theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
-                        }`}>
+                        <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
+                          }`}>
                           {item.label}
                         </span>
                       </div>
@@ -639,9 +631,8 @@ export default function App() {
           /* ═══════════ VISTA CÁMARA (SECUENCIA / VIDEO) ═══════════ */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              <div className={`relative rounded-2xl border overflow-hidden transition-colors ${
-                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
-              }`}>
+              <div className={`relative rounded-2xl border overflow-hidden transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
+                }`}>
                 <div className="aspect-video relative flex items-center justify-center bg-black">
                   <video
                     ref={videoRef}
@@ -671,9 +662,8 @@ export default function App() {
                 </div>
               </div>
 
-              <div className={`rounded-2xl border p-4 transition-colors ${
-                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-              }`}>
+              <div className={`rounded-2xl border p-4 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+                }`}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Frames capturados
@@ -781,7 +771,7 @@ export default function App() {
                         <p className={`text-sm leading-relaxed italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>"{result.analisis_movimiento}"</p>
                       </div>
                     )}
-                    
+
                     {result.alternativas && result.alternativas.length > 0 && (
                       <div>
                         <p className={`text-sm font-bold mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Alternativas</p>
@@ -822,9 +812,8 @@ export default function App() {
       </main>
 
       {/* ═══════════ SECCIÓN EDUCATIVA ═══════════ */}
-      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${
-        theme === 'dark' ? 'border-gray-900' : 'border-gray-200'
-      }`}>
+      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${theme === 'dark' ? 'border-gray-900' : 'border-gray-200'
+        }`}>
         <div className="text-center mb-16">
           <h2 className={`text-3xl md:text-4xl font-extrabold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Aprende sobre la LSM
@@ -833,14 +822,12 @@ export default function App() {
             La Lengua de Señas Mexicana es más que solo manos; es cultura, identidad y gramática propia.
           </p>
         </div>
-      
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
-            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-indigo-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-indigo-300'
-          }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
-              theme === 'dark' ? 'bg-indigo-600/20' : 'bg-indigo-100'
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-indigo-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-indigo-300'
             }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-indigo-600/20' : 'bg-indigo-100'
+              }`}>
               <Layers size={28} className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'} />
             </div>
             <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dactilología</h3>
@@ -848,13 +835,11 @@ export default function App() {
               Es el abecedario manual. Se utiliza para deletrear nombres propios, lugares o palabras que no tienen una seña específica. Es el primer paso para cualquier aprendiz.
             </p>
           </div>
-      
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
-            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-purple-300'
-          }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
-              theme === 'dark' ? 'bg-purple-600/20' : 'bg-purple-100'
+
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-purple-300'
             }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-purple-600/20' : 'bg-purple-100'
+              }`}>
               <Hand size={28} className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'} />
             </div>
             <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ideogramas</h3>
@@ -862,13 +847,11 @@ export default function App() {
               A diferencia del deletreo, una sola seña representa un concepto o palabra completa (ej. "Casa", "Familia"). Estas señas involucran configuración, movimiento y gesticulación.
             </p>
           </div>
-      
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${
-            theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-pink-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-pink-300'
-          }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
-              theme === 'dark' ? 'bg-pink-600/20' : 'bg-pink-100'
+
+          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-pink-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-pink-300'
             }`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-pink-600/20' : 'bg-pink-100'
+              }`}>
               <ShieldCheck size={28} className={theme === 'dark' ? 'text-pink-400' : 'text-pink-600'} />
             </div>
             <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mitos Comunes</h3>
@@ -878,18 +861,16 @@ export default function App() {
           </div>
         </div>
       </section>
-      
+
       {/* ═══════════ FORMULARIO DE COMUNIDAD ═══════════ */}
       <section className="max-w-4xl mx-auto px-4 pb-24">
-        <div className={`rounded-[2.5rem] p-8 md:p-12 border relative overflow-hidden transition-colors ${
-          theme === 'dark' 
-            ? 'bg-gradient-to-br from-gray-900 to-indigo-900/20 border-indigo-500/20' 
+        <div className={`rounded-[2.5rem] p-8 md:p-12 border relative overflow-hidden transition-colors ${theme === 'dark'
+            ? 'bg-gradient-to-br from-gray-900 to-indigo-900/20 border-indigo-500/20'
             : 'bg-gradient-to-br from-white to-indigo-50/50 border-indigo-200 shadow-2xl shadow-indigo-100/50'
-        }`}>
-          <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl ${
-            theme === 'dark' ? 'bg-indigo-600/10' : 'bg-indigo-300/30'
-          }`} />
-          
+          }`}>
+          <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl ${theme === 'dark' ? 'bg-indigo-600/10' : 'bg-indigo-300/30'
+            }`} />
+
           <div className="relative z-10">
             <h2 className={`text-3xl font-extrabold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Queremos conocerte
@@ -897,31 +878,31 @@ export default function App() {
             <p className={`mb-10 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.
             </p>
-      
-            <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const payload = Object.fromEntries(formData.entries());
-                  
-                  if (!user) {
-                    alert('Debes iniciar sesión para enviar tus comentarios.');
-                    setAuthModalOpen(true);
-                    return;
-                  }
-              
-                  try {
-                    const { error } = await supabase.functions.invoke('form', { body: payload });
-                    if (error) throw error;
-                    alert('¡Gracias! Tus respuestas se han guardado correctamente.');
-                    (e.target as HTMLFormElement).reset();
-                  } catch (err: any) {
-                    console.error('Error al enviar formulario:', err);
-                    alert('Hubo un error al enviar tus respuestas. Por favor, intenta más tarde.');
-                  }
-                }}
-                className="space-y-8"
-              >
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const payload = Object.fromEntries(formData.entries());
+
+                if (!user) {
+                  alert('Debes iniciar sesión para enviar tus comentarios.');
+                  setAuthModalOpen(true);
+                  return;
+                }
+
+                try {
+                  const { error } = await supabase.functions.invoke('form', { body: payload });
+                  if (error) throw error;
+                  alert('¡Gracias! Tus respuestas se han guardado correctamente.');
+                  (e.target as HTMLFormElement).reset();
+                } catch (err: any) {
+                  console.error('Error al enviar formulario:', err);
+                  alert('Hubo un error al enviar tus respuestas. Por favor, intenta más tarde.');
+                }
+              }}
+              className="space-y-8"
+            >
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Tienes algún familiar que use lengua de señas?
@@ -930,34 +911,32 @@ export default function App() {
                   {['Sí, cercano', 'Sí, lejano', 'No'].map((opcion) => (
                     <label key={opcion} className="relative">
                       <input type="radio" name="familiar" value={opcion} className="peer sr-only" required />
-                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${
-                        theme === 'dark' 
-                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700' 
+                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${theme === 'dark'
+                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700'
                           : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
-                      }`}>
+                        }`}>
                         {opcion}
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
-      
+
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Cuál es tu nivel de conocimiento en LSM?
                 </label>
-                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors cursor-pointer ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500' 
+                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors cursor-pointer ${theme === 'dark'
+                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500'
                     : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 shadow-sm'
-                }`}>
+                  }`}>
                   <option value="ninguno">Ninguno</option>
                   <option value="basico">Básico (Abecedario)</option>
                   <option value="intermedio">Intermedio (Conversación fluida)</option>
                   <option value="avanzado">Avanzado / Intérprete</option>
                 </select>
               </div>
-      
+
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Conoces a alguien que le pueda resultar útil esta página?
@@ -966,41 +945,38 @@ export default function App() {
                   {['Sí, mucho', 'Tal vez alguien'].map((opcion) => (
                     <label key={opcion} className="relative">
                       <input type="radio" name="utilidad" value={opcion} className="peer sr-only" />
-                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${
-                        theme === 'dark' 
-                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700' 
+                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${theme === 'dark'
+                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700'
                           : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
-                      }`}>
+                        }`}>
                         {opcion}
                       </div>
                     </label>
                   ))}
                 </div>
               </div>
-      
+
               <div className="space-y-4">
                 <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                   ¿Qué otra función te gustaría ver?
                 </label>
-                <textarea 
+                <textarea
                   name="sugerencia"
-                  rows={3} 
+                  rows={3}
                   placeholder="Ej: Diccionario visual, curso básico..."
-                  className={`w-full border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${
-                    theme === 'dark' 
-                      ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500' 
+                  className={`w-full border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${theme === 'dark'
+                      ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500'
                       : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400 shadow-sm'
-                  }`}
+                    }`}
                 />
               </div>
-      
+
               <button
                 type="submit"
-                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg cursor-pointer ${
-                  theme === 'dark' 
-                    ? 'bg-white text-gray-950 hover:bg-gray-100 shadow-white/10' 
+                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg cursor-pointer ${theme === 'dark'
+                    ? 'bg-white text-gray-950 hover:bg-gray-100 shadow-white/10'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/25'
-                }`}
+                  }`}
               >
                 Enviar respuestas
               </button>
@@ -1008,11 +984,10 @@ export default function App() {
           </div>
         </div>
       </section>
-      
+
       {/* ═══════════ FOOTER ═══════════ */}
-      <footer className={`border-t py-12 text-center transition-colors ${
-        theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-      }`}>
+      <footer className={`border-t py-12 text-center transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+        }`}>
         <div className="flex justify-center gap-6 mb-6">
           <Hand className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
           <ShieldCheck className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
@@ -1022,11 +997,18 @@ export default function App() {
           © 2026 HandsTranslator. Tecnología con impacto social.
         </p>
       </footer>
-      
+
       {/* ═══════════ AUTH MODAL ═══════════ */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
+      />
+
+      {/* ═══════════ PROFILE MODAL ═══════════ */}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        user={user}
       />
     </div>
   )
