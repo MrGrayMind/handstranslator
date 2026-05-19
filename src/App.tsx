@@ -530,11 +530,11 @@ export default function App() {
           </div>
         )}
 
-        {/* ── MODO: CONVERSACIÓN (Pantalla Dividida) ── */}
+        {/* ── MODO: CONVERSACIÓN (Pantalla Dividida Mejorada) ── */}
         {mode === 'conversation' && (
-          <div className="flex flex-col md:flex-row gap-4 h-[70vh] min-h-[600px]">
+          <div className="flex flex-col md:flex-row gap-4 min-h-[650px] lg:h-[75vh]">
             {/* Lado Oyente (Texto a Señas) */}
-            <div className={`flex-1 rounded-2xl border p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}><Keyboard size={16}/> Escribe para mostrar señas</h3>
               <div className="flex gap-2 mb-4">
                 <input 
@@ -542,13 +542,16 @@ export default function App() {
                   placeholder="Escribe aquí..." 
                   className={`flex-1 border rounded-xl p-3 text-sm outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`}
                 />
-                <button onClick={handleTextToSign} className="bg-indigo-600 text-white px-4 rounded-xl font-bold">Traducir</button>
+                <button onClick={handleTextToSign} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-xl font-bold cursor-pointer transition-colors">Traducir</button>
               </div>
               <div className={`flex-1 rounded-xl border flex items-center justify-center p-4 overflow-hidden ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
                 {playlist.length > 0 ? (
-                  <div className="flex gap-4 overflow-x-auto w-full items-center pb-2">
+                  <div className="flex gap-4 overflow-x-auto w-full items-center pb-2 scrollbar-thin">
                     {playlist.map((item, i) => !item.isSpace && (
-                      <div key={i} className="flex-col items-center flex-shrink-0"><img src={item.url} className="w-24 h-24 object-cover rounded-lg bg-white" /><span className="text-center font-bold mt-1 block">{item.label}</span></div>
+                      <div key={i} className="flex flex-col items-center flex-shrink-0">
+                        <img src={item.url} className="w-24 h-24 object-contain rounded-lg bg-white p-1 border" alt={item.label} />
+                        <span className="text-center font-extrabold mt-2 block text-sm uppercase">{item.label}</span>
+                      </div>
                     ))}
                   </div>
                 ) : <p className="opacity-50 text-sm">El texto en señas aparecerá aquí</p>}
@@ -559,24 +562,73 @@ export default function App() {
             <div className="hidden md:flex flex-col items-center justify-center text-gray-300 dark:text-gray-700"><div className="w-px h-full bg-current"></div><MessageCircle className="my-2" /><div className="w-px h-full bg-current"></div></div>
 
             {/* Lado Sordo (Cámara a Texto) */}
-            <div className={`flex-1 rounded-2xl border p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16}/> Graba para mostrar texto</h3>
               
-              {/* Usamos la función render también aquí */}
-              <div className="mb-4">{renderCameraView(false)}</div>
+              <div className="mb-4">
+                {renderCameraView(false)}
+                
+                {/* CAMBIO 1: Agregado el carrusel de frames compactos debajo de la cámara */}
+                {frames.length > 0 && (
+                  <div className={`mt-3 p-3 rounded-xl border flex gap-2 overflow-x-auto scrollbar-thin ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200 shadow-inner'}`}>
+                    {frames.map((frame, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <img src={frame} alt={`Frame ${index + 1}`} className="h-12 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-700" />
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[8px] font-bold px-1 rounded">
+                          {index + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               
               <div className="flex gap-2 mb-4">
-                <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex-1 bg-purple-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Capturar</button>
-                <button onClick={processFrames} disabled={processing || frames.length===0} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Traducir</button>
-                <button onClick={toggleCamera} className="px-4 border rounded-xl dark:border-gray-700"><Camera size={20} className={cameraOn ? 'text-red-500' : ''}/></button>
+                <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors">Capturar</button>
+                <button onClick={processFrames} disabled={processing || frames.length===0} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors">Traducir</button>
+                <button onClick={toggleCamera} className="px-4 border rounded-xl dark:border-gray-700 cursor-pointer"><Camera size={20} className={cameraOn ? 'text-red-500' : ''}/></button>
               </div>
-              <div className={`p-4 rounded-xl text-center border min-h-[100px] flex items-center justify-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-indigo-50 border-indigo-100'}`}>
-                {processing ? <Loader2 className="animate-spin text-indigo-500"/> : result ? (
-                  <div>
-                    <p className="text-3xl font-extrabold">{result.resultado}</p>
-                    <button onClick={() => speak(result.resultado)} className="mt-2 text-indigo-500"><Volume2/></button>
+
+              {/* Zona de Resultados con las mejoras de visualización */}
+              <div className={`p-4 rounded-xl text-center border flex flex-col items-center justify-center transition-colors min-h-[140px] ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700' : 'bg-indigo-50/60 border-indigo-100'}`}>
+                {processing ? (
+                  <Loader2 className="animate-spin text-indigo-500" size={28} />
+                ) : result ? (
+                  <div className="w-full space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                    {/* CAMBIO 2: Agregado el botón de la Mano junto al de audio */}
+                    <div className="flex items-center justify-center gap-3">
+                      <p className="text-3xl font-extrabold uppercase tracking-wide">{result.resultado}</p>
+                      <button onClick={() => speak(result.resultado)} className={`p-1.5 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:bg-gray-700' : 'text-indigo-600 hover:bg-indigo-200'}`} title="Escuchar"><Volume2 size={20} /></button>
+                      <button onClick={() => openSignModal(result.resultado)} className={`p-1.5 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:bg-gray-700' : 'text-purple-600 hover:bg-purple-200'}`} title="Ver señas en modal"><Hand size={20} /></button>
+                    </div>
+
+                    <div className="text-[11px] font-bold">
+                      <span className={`px-2.5 py-0.5 rounded-full border ${result.confianza.toLowerCase() === 'alto' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'}`}>
+                        Confianza: {result.confianza}
+                      </span>
+                    </div>
+
+                    {/* CAMBIO 3: Renderizado estético de las alternativas sugeridas por Claude */}
+                    {result.alternativas && result.alternativas.length > 0 && (
+                      <div className="text-left border-t border-gray-300 dark:border-gray-700/60 pt-2.5 mt-2 w-full">
+                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>¿Quisiste decir?</p>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {result.alternativas.map((alt, idx) => (
+                            <div key={idx} className={`text-xs flex items-center justify-between p-2 rounded-lg border ${theme === 'dark' ? 'bg-black/30 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                              <span className="font-extrabold uppercase tracking-wide opacity-90">{alt.seña}</span>
+                              <div className="flex gap-1">
+                                <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14}/></button>
+                                <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14}/></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ) : <p className="opacity-50 text-sm">La traducción de la cámara aparecerá aquí</p>}
+                ) : (
+                  <p className="opacity-50 text-sm">La traducción de la cámara aparecerá aquí</p>
+                )}
               </div>
             </div>
           </div>
