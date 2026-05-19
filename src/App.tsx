@@ -716,9 +716,31 @@ export default function App() {
                 {playlist.length > 0 ? (
                   <div className="flex gap-4 overflow-x-auto w-full items-center pb-2 scrollbar-thin">
                     {playlist.map((item, i) => !item.isSpace && (
-                      <div key={i} className="flex flex-col items-center flex-shrink-0">
-                        <img src={item.url} className="w-24 h-24 object-contain rounded-lg bg-white p-1 border" alt={item.label} />
-                        <span className="text-center font-extrabold mt-2 block text-sm uppercase">{item.label}</span>
+                      <div
+                        key={i}
+                        onClick={() => rotatePlaylistVariant(i)}
+                        title={
+                          item.variants && item.variants.length > 1
+                            ? 'Click para cambiar variante'
+                            : undefined
+                        }
+                        className={`relative flex-none flex flex-col items-center cursor-pointer transition-all duration-200 hover:scale-105`}
+                      >
+                        <img
+                          src={item.url}
+                          className="w-24 h-24 object-contain rounded-lg bg-white p-1 border"
+                          alt={item.label}
+                        />
+
+                        {item.variants && item.variants.length > 1 && (
+                          <div className="absolute top-1 right-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">
+                            {(item.currentVariant ?? 0) + 1}/{item.variants.length}
+                          </div>
+                        )}
+
+                        <span className="text-center font-extrabold mt-2 block text-sm uppercase">
+                          {item.label}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -843,8 +865,8 @@ export default function App() {
                         : undefined
                     }
                     className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${theme === 'dark'
-                        ? 'bg-gray-800 border-gray-700 hover:border-indigo-500'
-                        : 'bg-white border-gray-200 shadow-sm hover:border-indigo-400'
+                      ? 'bg-gray-800 border-gray-700 hover:border-indigo-500'
+                      : 'bg-white border-gray-200 shadow-sm hover:border-indigo-400'
                       }`}
                   >
                     <img
