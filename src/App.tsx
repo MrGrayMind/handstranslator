@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import AuthModal from './components/AuthModal'
 import ProfileModal from './components/ProfileModal'
+import LsmSection from './components/LsmSection'
 import {
   User as UserIcon,
   LogOut,
@@ -605,6 +606,13 @@ export default function App() {
         )}
 
       </main>
+
+      {/* ✅ AQUÍ ACOPLAS EL NUEVO ARCHIVO EXTRAÍDO */}
+      <LsmSection 
+        theme={theme} 
+        user={user} 
+        onAuthRequired={() => setAuthModalOpen(true)} 
+      />
 
       {/* ═══════════ HISTORIAL SIDEBAR (Overlay) ═══════════ */}
       {showHistory && (
