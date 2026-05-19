@@ -362,7 +362,7 @@ export default function App() {
     </div>
   )
 
-  const CameraView = ({ showControls = true }) => (
+  const renderCameraView = (showControls = true) => (
     <div className="space-y-4">
       <div className={`relative rounded-2xl border overflow-hidden transition-all duration-100 ${flash ? 'border-white bg-white scale-[1.01]' : theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'}`}>
         <div className={`aspect-video relative flex items-center justify-center ${flash ? 'opacity-50' : 'opacity-100'}`}>
@@ -493,8 +493,24 @@ export default function App() {
             <QuickPhrases />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <CameraView />
+                {/* 1. Usamos la función render para que no se desmonte el video */}
+                {renderCameraView(true)}
+                
+                {/* 2. AQUÍ ESTÁ EL CARRUSEL DE FRAMES QUE FALTABA */}
+                {frames.length > 0 && (
+                  <div className={`mt-4 p-4 rounded-xl border flex gap-3 overflow-x-auto ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    {frames.map((frame, index) => (
+                      <div key={index} className="relative flex-shrink-0">
+                        <img src={frame} alt={`Frame ${index + 1}`} className="h-20 w-28 object-cover rounded-lg border border-gray-300 dark:border-gray-700" />
+                        <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          {index + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              
               <div className="lg:col-span-1">
                 <div className={`rounded-2xl border p-6 sticky top-24 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Zap size={20} className="text-indigo-500" /> Resultado</h3>
@@ -542,7 +558,10 @@ export default function App() {
             {/* Lado Sordo (Cámara a Texto) */}
             <div className={`flex-1 rounded-2xl border p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16}/> Graba para mostrar texto</h3>
-              <div className="mb-4"><CameraView showControls={false} /></div>
+              
+              {/* Usamos la función render también aquí */}
+              <div className="mb-4">{renderCameraView(false)}</div>
+              
               <div className="flex gap-2 mb-4">
                 <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex-1 bg-purple-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Capturar</button>
                 <button onClick={processFrames} disabled={processing || frames.length===0} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Traducir</button>
