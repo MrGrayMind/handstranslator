@@ -104,9 +104,38 @@ const FRASES_RAPIDAS = [
 ]
 
 const DICCIONARIO_CATEGORIAS = [
-  { nombre: 'Básico', palabras: ['HOLA', 'ADIOS', 'GRACIAS', 'POR FAVOR', 'PERDON'] },
-  { nombre: 'Emergencia', palabras: ['AYUDA', 'MEDICO', 'HOSPITAL', 'POLICIA', 'DOLOR'] },
-  { nombre: 'Familia', palabras: ['MAMA', 'PAPA', 'HERMANO', 'HIJO', 'ABUELO'] }
+  { 
+    nombre: 'Básico', 
+    palabras: ['HOLA', 'ADIOS', 'GRACIAS', 'POR FAVOR', 'PERDON', 'SI', 'NO', 'BIEN', 'MAL'] 
+  },
+  { 
+    nombre: 'Preguntas', 
+    palabras: ['QUE', 'QUIEN', 'COMO', 'CUANDO', 'DONDE', 'POR QUE'] 
+  },
+  { 
+    nombre: 'Emergencia', 
+    palabras: ['AYUDA', 'MEDICO', 'HOSPITAL', 'POLICIA', 'DOLOR', 'FUEGO', 'AMBULANCIA'] 
+  },
+  { 
+    nombre: 'Familia', 
+    palabras: ['MAMA', 'PAPA', 'HERMANO', 'HIJO', 'ABUELO', 'TIO', 'PRIMO'] 
+  },
+  { 
+    nombre: 'Emociones', 
+    palabras: ['FELIZ', 'TRISTE', 'ENOJADO', 'CANSADO', 'MIEDO', 'SORPRESA'] 
+  },
+  { 
+    nombre: 'Tiempo', 
+    palabras: ['HOY', 'AYER', 'MAÑANA', 'AHORA', 'DESPUES', 'TARDE', 'NOCHE'] 
+  },
+  { 
+    nombre: 'Comida', 
+    palabras: ['AGUA', 'COMER', 'HAMBRE', 'SED', 'PAN', 'LECHE'] 
+  },
+  { 
+    nombre: 'Identidad y Escuela', 
+    palabras: ['SORDO', 'OYENTE', 'APRENDER', 'ESCUELA', 'MAESTRO', 'NOMBRE'] 
+  }
 ]
 
 export default function App() {
