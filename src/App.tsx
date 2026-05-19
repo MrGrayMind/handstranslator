@@ -365,23 +365,32 @@ export default function App() {
     return newPlaylist
   }
 
-  const rotateVariant = (index: number) => {
-    setModalPlaylist(prev =>
-      prev.map((item, i) => {
-        if (i !== index || !item.variants || item.variants.length <= 1) {
-          return item
-        }
+  const rotateVariantInPlaylist = (
+    list: SignItem[],
+    index: number
+  ): SignItem[] => {
+    return list.map((item, i) => {
+      if (i !== index || !item.variants || item.variants.length <= 1) {
+        return item
+      }
 
-        const currentIndex = item.variants.indexOf(item.url)
-        const nextIndex = (currentIndex + 1) % item.variants.length
+      const currentIndex = item.variants.indexOf(item.url)
+      const nextIndex = (currentIndex + 1) % item.variants.length
 
-        return {
-          ...item,
-          url: item.variants[nextIndex],
-          currentVariant: nextIndex
-        }
-      })
-    )
+      return {
+        ...item,
+        url: item.variants[nextIndex],
+        currentVariant: nextIndex
+      }
+    })
+  }
+
+  const rotateModalVariant = (index: number) => {
+    setModalPlaylist(prev => rotateVariantInPlaylist(prev, index))
+  }
+
+  const rotatePlaylistVariant = (index: number) => {
+    setPlaylist(prev => rotateVariantInPlaylist(prev, index))
   }
 
   const getSignUrl = (filename: string) => `/señas/palabras/${filename}.png`;
@@ -825,9 +834,35 @@ export default function App() {
                     <span className="text-[10px] rotate-90 uppercase font-bold">Espacio</span>
                   </div>
                 ) : (
-                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
-                    <img src={item.url} className="w-40 h-40 object-contain rounded-lg bg-white p-1" alt={item.label} />
-                    <span className="mt-3 font-extrabold text-xl">{item.label}</span>
+                  <div
+                    key={index}
+                    onClick={() => rotatePlaylistVariant(index)}
+                    title={
+                      item.variants && item.variants.length > 1
+                        ? 'Click para cambiar variante'
+                        : undefined
+                    }
+                    className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${theme === 'dark'
+                        ? 'bg-gray-800 border-gray-700 hover:border-indigo-500'
+                        : 'bg-white border-gray-200 shadow-sm hover:border-indigo-400'
+                      }`}
+                  >
+                    <img
+                      src={item.url}
+                      className="w-40 h-40 object-contain rounded-lg bg-white p-1"
+                      alt={item.label}
+                    />
+
+                    {/* Indicador de variantes */}
+                    {item.variants && item.variants.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md">
+                        {(item.currentVariant ?? 0) + 1}/{item.variants.length}
+                      </div>
+                    )}
+
+                    <span className="mt-3 font-extrabold text-xl uppercase">
+                      {item.label}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -927,42 +962,40 @@ export default function App() {
             <div className={`rounded-xl border p-3 md:p-4 min-h-[240px] flex items-center transition-colors ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
               {/* CAMBIO: Reducido el gap de 4 a 3 y ajustado el padding inferior a pb-2 */}
               <div
-  ref={modalCarouselRef}
-  className="flex flex-nowrap gap-4 overflow-x-auto overflow-y-hidden w-full pb-2 scrollbar-thin items-center"
->
-  {modalPlaylist.map((item, index) =>
-    item.isSpace ? (
-      <div
-        key={index}
-        className="flex-none w-12 h-32 rounded-xl border-2 border-dashed"
-      />
-    ) : (
-      <div
-        key={index}
-        className="relative flex-none w-[180px] md:w-[220px] flex flex-col items-center p-2 rounded-xl border"
-      >
-        <img
-          src={item.url}
-          alt={item.label}
-          className="w-40 h-40 object-contain rounded-lg bg-white p-1"
-        />
+                ref={modalCarouselRef}
+                className="flex flex-nowrap gap-4 overflow-x-auto overflow-y-hidden w-full pb-2 scrollbar-thin items-center"
+              >
+                {modalPlaylist.map((item, index) =>
+                  item.isSpace ? (
+                    <div
+                      key={index}
+                      className="flex-none w-12 h-32 rounded-xl border-2 border-dashed"
+                    />
+                  ) : (
+                    <div
+                      key={index}
+                      onClick={() => rotatePlaylistVariant(index)}
+                      className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]`}
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="w-40 h-40 object-contain rounded-lg bg-white p-1"
+                      />
 
-        {item.variants && item.variants.length > 1 && (
-          <button
-            onClick={() => rotateVariant(index)}
-            className="absolute top-2 right-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full"
-          >
-            {(item.currentVariant ?? 0) + 1}/{item.variants.length}
-          </button>
-        )}
+                      {item.variants && item.variants.length > 1 && (
+                        <div className="absolute top-2 right-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold">
+                          {(item.currentVariant ?? 0) + 1}/{item.variants.length}
+                        </div>
+                      )}
 
-        <span className="mt-2 font-bold uppercase">
-          {item.label}
-        </span>
-      </div>
-    )
-  )}
-</div>
+                      <span className="mt-2 font-bold uppercase">
+                        {item.label}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
 
             {/* Controles de navegación inferior */}
