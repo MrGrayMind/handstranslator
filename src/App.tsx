@@ -762,7 +762,7 @@ export default function App() {
                         >
                           <img
                             src={item.url}
-                            className="w-24 h-24 object-contain rounded-lg bg-white p-1 border"
+                            className="h-24 w-auto min-w-[96px] max-w-[200px] object-contain rounded-lg bg-white p-1 border"
                             alt={item.label}
                           />
 
@@ -911,19 +911,16 @@ export default function App() {
                   <div
                     key={index}
                     onClick={() => rotatePlaylistVariant(index)}
-                    title={
-                      item.variants && item.variants.length > 1
-                        ? 'Click para cambiar variante'
-                        : undefined
-                    }
-                    className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${theme === 'dark'
+                    title={item.variants && item.variants.length > 1 ? 'Click para cambiar variante' : undefined}
+                    
+                    className={`relative flex-none flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${theme === 'dark'
                       ? 'bg-gray-800 border-gray-700 hover:border-indigo-500'
                       : 'bg-white border-gray-200 shadow-sm hover:border-indigo-400'
                       }`}
                   >
                     <img
                       src={item.url}
-                      className="w-40 h-40 object-contain rounded-lg bg-white p-1"
+                      className="h-40 w-auto min-w-[140px] max-w-[300px] object-contain rounded-lg bg-white p-1"
                       alt={item.label}
                     />
 
@@ -1066,12 +1063,12 @@ export default function App() {
                     <div
                       key={index}
                       onClick={() => rotateModalVariant(index)}
-                      className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]`}
+                      className={`relative flex-none flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]`}
                     >
                       <img
                         src={item.url}
                         alt={item.label}
-                        className="w-40 h-40 object-contain rounded-lg bg-white p-1"
+                        className="h-40 w-auto min-w-[140px] max-w-[320px] object-contain rounded-lg bg-white p-1"
                       />
 
                       {item.variants && item.variants.length > 1 && (
