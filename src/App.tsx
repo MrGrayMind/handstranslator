@@ -100,6 +100,8 @@ export default function App() {
   const [modalPlaylist, setModalPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
   const [modalText, setModalText] = useState('') // NUEVO: Guardar el texto exacto
 
+  const [qualityWarning, setQualityWarning] = useState<string | null>(null)
+
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
     can_use: boolean
@@ -212,15 +214,41 @@ export default function App() {
     if (navigator.vibrate) navigator.vibrate(50)
   }
 
+  const analyzeQuality = (canvas: HTMLCanvasElement): string | null => {
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const data = imageData.data
+    
+    // Calcular brillo promedio
+    let brightness = 0
+    for (let i = 0; i < data.length; i += 4) {
+      brightness += (data[i] + data[i + 1] + data[i + 2]) / 3
+    }
+    brightness /= (data.length / 4)
+
+    if (brightness < 40) return "⚠️ Iluminación muy baja"
+    return null
+  }
+
   const captureFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
     const canvas = canvasRef.current
-    canvas.width = video.videoWidth || 640
-    canvas.height = video.videoHeight || 480
+    canvas.width = 640
+    canvas.height = 480
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(video, 0, 0)
+    
+    // Chequeo de calidad
+    const warning = analyzeQuality(canvas)
+    if (warning) {
+      setQualityWarning(warning)
+      setTimeout(() => setQualityWarning(null), 2000)
+      return // No capturamos si la calidad es mala
+    }
+
     triggerFeedback()
     setFrames((prev) => [...prev, canvas.toDataURL('image/jpeg', 0.8)])
   }, [])
@@ -379,6 +407,13 @@ export default function App() {
       <div className={`relative rounded-2xl border overflow-hidden transition-all duration-100 ${flash ? 'border-white bg-white scale-[1.01]' : theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'}`}>
         <div className={`aspect-video relative flex items-center justify-center ${flash ? 'opacity-50' : 'opacity-100'}`}>
           <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${cameraOn ? 'block' : 'hidden'}`} />
+          {qualityWarning && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
+              <div className="bg-red-500 text-white px-6 py-3 rounded-full font-bold shadow-lg animate-bounce">
+                {qualityWarning}
+              </div>
+            </div>
+          )}
           {!cameraOn && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
               <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
@@ -543,7 +578,14 @@ export default function App() {
                 <div className={`rounded-2xl border p-6 sticky top-24 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Zap size={20} className="text-indigo-500" /> Resultado</h3>
                   {processing ? (
-                    <div className="py-12 flex flex-col items-center gap-4"><Loader2 size={40} className="text-indigo-500 animate-spin" /><p>Procesando...</p></div>
+                    <div className="flex flex-col items-center gap-3">
+                    {/* Animación de mano brillante */}
+                    <div className="relative">
+                      <Hand size={40} className="text-indigo-500 animate-pulse" />
+                      <div className="absolute inset-0 bg-indigo-400 blur-xl animate-ping opacity-50"></div>
+                    </div>
+                    <p className="text-sm font-bold text-indigo-400 animate-pulse">Analizando señas...</p>
+                  </div>
                   ) : result ? (
                     <ResultCard res={result} />
                   ) : (
