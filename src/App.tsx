@@ -95,8 +95,10 @@ export default function App() {
   // ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
   const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
+
   const [signModalOpen, setSignModalOpen] = useState(false)
   const [modalPlaylist, setModalPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
+  const [modalText, setModalText] = useState('') // NUEVO: Guardar el texto exacto
 
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
@@ -278,6 +280,7 @@ export default function App() {
   const handleTextToSign = () => setPlaylist(generatePlaylistFromText(inputText))
   
   const openSignModal = (text: string) => {
+    setModalText(text)
     setModalPlaylist(generatePlaylistFromText(text))
     setSignModalOpen(true)
   }
@@ -665,7 +668,17 @@ export default function App() {
           <div className={`relative w-full max-w-4xl rounded-2xl p-6 md:p-8 shadow-2xl ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className={`text-2xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Hand className="text-purple-500" /> Traducción</h2>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
+                
+                {/* ✅ NUEVO: Botón de Audio */}
+                <button 
+                  onClick={() => speak(modalText)} 
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
+                  title="Escuchar texto en voz alta"
+                >
+                  <Volume2 size={20} />
+                </button>
+
                 {/* Control de Velocidad (Visual) */}
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   <Gauge size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
@@ -675,7 +688,8 @@ export default function App() {
                     <option value={1.5}>1.5x (Rápido)</option>
                   </select>
                 </div>
-                <button onClick={() => setSignModalOpen(false)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24} /></button>
+                
+                <button onClick={() => setSignModalOpen(false)} className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24} /></button>
               </div>
             </div>
 
