@@ -67,8 +67,11 @@ export default function App() {
 
   // ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
-  // Añadimos 'isSpace' al tipo de dato
   const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
+  
+  // NUEVO: Estados para el Modal de Señas de los resultados
+  const [signModalOpen, setSignModalOpen] = useState(false)
+  const [modalPlaylist, setModalPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
 
   // ── Limits ──
   const [limits, setLimits] = useState<null | {
@@ -259,19 +262,16 @@ export default function App() {
   // ════════════════════════════════════════════
   //  TEXT TO SIGN LOGIC
   // ════════════════════════════════════════════
-  const handleTextToSign = () => {
-    if (!inputText.trim()) return
-    setPlaylist([])
-
-    const cleanText = inputText.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
-    // Dividimos por uno o MÁS espacios seguidos
+  const generatePlaylistFromText = (text: string) => {
+    if (!text.trim()) return []
+    const cleanText = text.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     const words = cleanText.split(/\s+/)
 
     let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i]
-      if (!word) continue // Evita bugs si hay espacios al inicio o final
+      if (!word) continue
 
       if (PALABRAS_DISPONIBLES.includes(word)) {
         newPlaylist.push({ isSpace: false, url: `/señas/palabras/${word}.gif`, label: word })
@@ -283,13 +283,20 @@ export default function App() {
         }
       }
 
-      // Añadir tarjeta de ESPACIO si NO es la última palabra
       if (i < words.length - 1) {
         newPlaylist.push({ isSpace: true, url: '', label: '' })
       }
     }
+    return newPlaylist
+  }
 
-    setPlaylist(newPlaylist)
+  const handleTextToSign = () => {
+    setPlaylist(generatePlaylistFromText(inputText))
+  }
+
+  const openSignModal = (text: string) => {
+    setModalPlaylist(generatePlaylistFromText(text))
+    setSignModalOpen(true)
   }
 
   // ════════════════════════════════════════════
@@ -754,6 +761,9 @@ export default function App() {
                         <button onClick={() => speak(result.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:text-white hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'}`} title="Escuchar respuesta">
                           <Volume2 size={24} />
                         </button>
+                        <button onClick={() => openSignModal(result.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:text-white hover:bg-purple-500/30' : 'text-purple-600 hover:bg-purple-200'}`} title="Ver traducción en señas">
+                          <Hand size={24} />
+                        </button>
                       </div>
                     </div>
 
@@ -784,6 +794,9 @@ export default function App() {
                               </div>
                               <button onClick={() => speak(alt.seña)} className={`p-1.5 rounded-md transition-colors cursor-pointer ${theme === 'dark' ? 'text-gray-400 hover:text-indigo-400 hover:bg-gray-700' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'}`}>
                                 <Volume2 size={16} />
+                              </button>
+                              <button onClick={() => openSignModal(alt.seña)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:text-white hover:bg-purple-500/30' : 'text-purple-600 hover:bg-purple-200'}`} title="Ver traducción en señas">
+                                <Hand size={24} />
                               </button>
                             </div>
                           ))}
@@ -1010,6 +1023,45 @@ export default function App() {
         onClose={() => setProfileModalOpen(false)}
         user={user}
       />
+
+      {/* ═══════════ SIGN TRANSLATION MODAL ═══════════ */}
+      {signModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className={`relative w-full max-w-4xl rounded-2xl p-6 md:p-8 shadow-2xl ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
+            <button 
+              onClick={() => setSignModalOpen(false)} 
+              className={`absolute top-4 right-4 p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}
+            >
+              <X size={24} />
+            </button>
+            
+            <h2 className={`text-2xl font-bold mb-6 flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <Hand className="text-purple-500" /> Traducción a señas
+            </h2>
+
+            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center" style={{ scrollbarWidth: 'thin' }}>
+                {modalPlaylist.map((item, index) => (
+                  item.isSpace ? (
+                    <div key={index} className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${theme === 'dark' ? 'border-gray-500' : 'border-gray-400'}`}>
+                      <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Espacio
+                      </span>
+                    </div>
+                  ) : (
+                    <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-sm hover:border-purple-300 hover:shadow-md'}`}>
+                      <img src={item.url} alt={`Seña para ${item.label}`} className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
+                      <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
