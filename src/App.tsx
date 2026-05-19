@@ -854,6 +854,17 @@ export default function App() {
             <div className="flex gap-3 mb-8">
               <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()} placeholder="Escribe para traducir..." className={`flex-1 border rounded-xl p-4 outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`} />
               <button onClick={handleTextToSign} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer hover:bg-indigo-700 transition-colors">Traducir</button>
+              <button
+                onClick={() => speak(inputText)}
+                disabled={!inputText.trim()}
+                className={`px-5 py-4 rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50 ${theme === 'dark'
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }`}
+                title="Reproducir texto"
+              >
+                <Volume2 size={22} />
+              </button>
             </div>
             <div className={`rounded-xl border p-6 min-h-[300px] flex items-center ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex gap-4 overflow-x-auto w-full pb-4 items-center scrollbar-thin">
