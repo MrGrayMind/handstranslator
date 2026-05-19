@@ -470,16 +470,35 @@ export default function App() {
         </div>
       </div>
 
-      {/* Botones de Feedback */}
-      <div className="flex items-center justify-between px-2">
-        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${res.confianza.toLowerCase() === 'alto' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'}`}>
-          Confianza: {res.confianza}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>¿Correcto?</span>
-          <button onClick={() => setFeedbackGiven('up')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'up' ? 'bg-green-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsUp size={16} /></button>
-          <button onClick={() => setFeedbackGiven('down')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'down' ? 'bg-red-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsDown size={16} /></button>
+      {/* Botones de Feedback y Alternativas */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <span className={`text-xs font-bold px-3 py-1 rounded-full border ${res.confianza.toLowerCase() === 'alto' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'}`}>
+            Confianza: {res.confianza}
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setFeedbackGiven('up')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'up' ? 'bg-green-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsUp size={16} /></button>
+            <button onClick={() => setFeedbackGiven('down')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'down' ? 'bg-red-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsDown size={16} /></button>
+          </div>
         </div>
+
+        {/* ✅ AQUÍ ESTÁ EL BLOQUE DE ALTERNATIVAS QUE FALTABA */}
+        {res.alternativas && res.alternativas.length > 0 && (
+          <div className={`border rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Otras interpretaciones posibles:</p>
+            <div className="grid grid-cols-1 gap-2">
+              {res.alternativas.map((alt, idx) => (
+                <div key={idx} className={`text-xs flex items-center justify-between p-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                  <span className="font-extrabold uppercase tracking-wide opacity-90">{alt.seña}</span>
+                  <div className="flex gap-1">
+                    <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14}/></button>
+                    <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
