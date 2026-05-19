@@ -972,16 +972,6 @@ export default function App() {
                   <Volume2 size={20} />
                 </button>
 
-                {/* Control de Velocidad */}
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
-                  <Gauge size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                  <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none cursor-pointer">
-                    <option value={0.5}>0.5x (Lento)</option>
-                    <option value={1}>1x (Normal)</option>
-                    <option value={1.5}>1.5x (Rápido)</option>
-                  </select>
-                </div>
-
                 <button onClick={() => setSignModalOpen(false)} className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24} /></button>
               </div>
             </div>
