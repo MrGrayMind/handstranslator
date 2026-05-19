@@ -239,9 +239,9 @@ export default function ProfileModal({ isOpen, onClose, user }: ProfileModalProp
                 </div>
               )}
 
-              {/* Info extra de la suscripción (fecha de corte) */}
-              {currentSub && currentSub.current_period_end && (
-                <div className="mt-6 p-4 rounded-xl bg-gray-800/80 border border-gray-700 text-sm flex justify-between items-center">
+              {/* Info extra de la suscripción (fecha de corte) - Oculto si el plan es FREE */}
+              {currentSub && currentSub.current_period_end && activePlanId !== 'free' && (
+                <div className="mt-6 p-4 rounded-xl bg-gray-800/80 border border-gray-700 text-sm flex justify-between items-center animate-in fade-in duration-200">
                   <span className="text-gray-400">Próximo ciclo de facturación:</span>
                   <span className="text-white font-bold">{new Date(currentSub.current_period_end).toLocaleDateString()}</span>
                 </div>
