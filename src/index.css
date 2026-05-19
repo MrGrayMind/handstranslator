@@ -1,22 +1,38 @@
 @import "tailwindcss";
 
-/* Custom scrollbar for frame carousel */
+/* ════════════════════════════════════════════
+   CUSTOM SCROLLBARS (Modern & Thin - Indigo)
+   ════════════════════════════════════════════ */
+
+/* Para Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.5) transparent;
+}
+
+/* Para navegadores Webkit (Chrome, Safari, Edge) */
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;
+  width: 6px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 10px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(107, 114, 128, 0.4);
-  border-radius: 3px;
+  background-color: rgba(99, 102, 241, 0.5); /* Tono índigo que hace match con tu app */
+  border-radius: 10px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(107, 114, 128, 0.6);
+  background-color: rgba(99, 102, 241, 0.8); /* Índigo más oscuro al pasar el mouse */
 }
+
+/* ════════════════════════════════════════════
+   GLOBAL ESTYLES & FIXES
+   ════════════════════════════════════════════ */
 
 /* Smooth animations */
 * {
@@ -24,7 +40,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Video element flip for selfie mode */
+/* Video element flip for selfie mode (Efecto espejo esencial) */
 video {
   transform: scaleX(-1);
 }
