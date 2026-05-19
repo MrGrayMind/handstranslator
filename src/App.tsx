@@ -585,16 +585,18 @@ export default function App() {
             <QuickPhrases />
             <div className="flex gap-3 mb-8">
               <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()} placeholder="Escribe para traducir..." className={`flex-1 border rounded-xl p-4 outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`} />
-              <button onClick={handleTextToSign} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold">Traducir</button>
+              <button onClick={handleTextToSign} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer hover:bg-indigo-700 transition-colors">Traducir</button>
             </div>
             <div className={`rounded-xl border p-6 min-h-[300px] flex items-center ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex gap-4 overflow-x-auto w-full pb-4 items-center">
+              <div className="flex gap-4 overflow-x-auto w-full pb-4 items-center scrollbar-thin">
                 {playlist.map((item, index) => item.isSpace ? (
-                  <div key={index} className="w-12 h-32 border-2 border-dashed opacity-40 rounded-xl" />
+                  <div key={index} className="w-16 h-40 flex-shrink-0 border-2 border-dashed opacity-40 rounded-xl flex items-center justify-center">
+                    <span className="text-[10px] rotate-90 uppercase font-bold">Espacio</span>
+                  </div>
                 ) : (
-                  <div key={index} className={`flex flex-col items-center p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
-                    <img src={item.url} className="w-32 h-32 object-cover rounded-lg" />
-                    <span className="mt-3 font-bold text-lg">{item.label}</span>
+                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    <img src={item.url} className="w-40 h-40 object-contain rounded-lg bg-white p-1" alt={item.label} />
+                    <span className="mt-3 font-extrabold text-xl">{item.label}</span>
                   </div>
                 ))}
               </div>
