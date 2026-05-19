@@ -469,9 +469,25 @@ export default function App() {
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-yellow-400' : 'bg-gray-100 border-gray-200 text-indigo-600'}`}><Sun size={18} className="hidden dark:block"/><Moon size={18} className="block dark:hidden"/></button>
             
             {user ? (
-              <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:bg-red-50'}`}><LogOut size={18} /><span className="hidden md:inline">Salir</span></button>
+              <div className="flex items-center gap-2">
+                {/* ✅ NUEVO BOTÓN PARA ABRIR EL PERFIL/SUSCRIPCIONES */}
+                <button 
+                  onClick={() => setProfileModalOpen(true)} 
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:text-white text-gray-300 hover:bg-gray-800' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'}`} 
+                  title="Mi Cuenta y Suscripción"
+                >
+                  <UserIcon size={18} />
+                </button>
+                
+                <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-red-500/20' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
+                  <LogOut size={18} />
+                  <span className="hidden md:inline">Salir</span>
+                </button>
+              </div>
             ) : (
-              <button onClick={() => setAuthModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm shadow-lg"><UserIcon size={18} /> Entrar</button>
+              <button onClick={() => setAuthModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg cursor-pointer transition-colors">
+                <UserIcon size={18} /> Entrar
+              </button>
             )}
           </div>
         </div>
