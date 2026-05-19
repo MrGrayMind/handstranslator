@@ -662,15 +662,17 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══════════ SIGN TRANSLATION MODAL (Con control de velocidad) ═══════════ */}
+      {/* ═══════════ SIGN TRANSLATION MODAL (Diseño Panorámico Expandido) ═══════════ */}
       {signModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className={`relative w-full max-w-4xl rounded-2xl p-6 md:p-8 shadow-2xl ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Hand className="text-purple-500" /> Traducción</h2>
-              <div className="flex items-center gap-3 md:gap-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
+          {/* CAMBIO: Se cambió max-w-4xl a max-w-6xl/7xl y se redujo el padding externo de p-8 a p-4 md:p-6 */}
+          <div className={`relative w-full max-w-6xl xl:max-w-7xl rounded-2xl p-4 md:p-6 shadow-2xl transition-all ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
+            
+            <div className="flex justify-between items-center mb-4 md:mb-6">
+              <h2 className={`text-xl md:text-2xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Hand className="text-purple-500" /> Traducción</h2>
+              <div className="flex items-center gap-2 md:gap-4">
                 
-                {/* ✅ NUEVO: Botón de Audio */}
+                {/* Botón de Audio */}
                 <button 
                   onClick={() => speak(modalText)} 
                   className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
@@ -679,7 +681,7 @@ export default function App() {
                   <Volume2 size={20} />
                 </button>
 
-                {/* Control de Velocidad (Visual) */}
+                {/* Control de Velocidad */}
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
                   <Gauge size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                   <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none cursor-pointer">
@@ -693,25 +695,37 @@ export default function App() {
               </div>
             </div>
 
-            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-              <div ref={modalCarouselRef} className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center transition-transform" style={{ transitionDuration: `${1 / playbackSpeed}s` }}>
+            {/* CAMBIO: Se redujo el padding interno de p-6 a p-3 md:p-4 y el min-h para ganar espacio vertical */}
+            <div className={`rounded-xl border p-3 md:p-4 min-h-[240px] flex items-center transition-colors ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+              {/* CAMBIO: Reducido el gap de 4 a 3 y ajustado el padding inferior a pb-2 */}
+              <div ref={modalCarouselRef} className="flex gap-3 overflow-x-auto w-full pb-2 scrollbar-thin items-center transition-transform" style={{ transitionDuration: `${1 / playbackSpeed}s` }}>
                 {modalPlaylist.map((item, index) => item.isSpace ? (
-                  <div key={index} className="flex-shrink-0 w-12 md:w-16 h-32 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40"><span className="text-[10px] rotate-90 uppercase">Espacio</span></div>
+                  /* CAMBIO: Espacio más compacto (w-10 a w-12) */
+                  <div key={index} className="flex-shrink-0 w-10 md:w-12 h-32 mx-1 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 border-gray-400">
+                    <span className="text-[9px] rotate-90 uppercase font-bold tracking-wider">Espacio</span>
+                  </div>
                 ) : (
-                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
-                    {/* Truco CSS para aplicar velocidad a la vista si usas animaciones, pero aquí lo dejamos estático para GIFs */}
-                    <img src={item.url} alt={item.label} className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg bg-white" style={{ animationDuration: `${1 / playbackSpeed}s` }} />
-                    <span className="mt-3 font-extrabold text-lg">{item.label}</span>
+                  /* CAMBIO: Tarjetas optimizadas (p-2), responsivas y con flex-shrink-0 absoluto */
+                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-2 rounded-xl border transition-all hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    {/* Imágenes responsivas: más compactas en móvil y tamaño completo en pantallas grandes */}
+                    <img 
+                      src={item.url} 
+                      alt={item.label} 
+                      className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 object-contain rounded-lg bg-white p-1" 
+                      style={{ animationDuration: `${1 / playbackSpeed}s` }} 
+                    />
+                    <span className="mt-2 font-extrabold text-sm md:text-base uppercase tracking-wider">{item.label}</span>
                   </div>
                 ))}
               </div>
             </div>
             
-            {/* Controles de auto-scroll guiado por velocidad */}
-            <div className="mt-4 flex justify-center gap-4">
-              <button onClick={() => scrollCarousel(modalCarouselRef, 'left')} className="p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"><ChevronLeft/></button>
-              <button onClick={() => scrollCarousel(modalCarouselRef, 'right')} className="p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"><ChevronRight/></button>
+            {/* Controles de navegación inferior */}
+            <div className="mt-3 flex justify-center gap-4">
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'left')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronLeft size={20}/></button>
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'right')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronRight size={20}/></button>
             </div>
+
           </div>
         </div>
       )}
