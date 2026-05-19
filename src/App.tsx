@@ -76,14 +76,14 @@ const PALABRAS_DISPONIBLES: Record<string, string[]> = {
   "ESO": ["ESO"],
   "ESE": ["ESE"],
   "ESA": ["ESA"],
-  "ENTRE": ["ENTRE","ENTRE_2"],
+  "ENTRE": ["ENTRE", "ENTRE_2"],
   "EN": ["EN"],
   "ELLOS": ["ELLOS"],
   "ELLA": ["ELLA"],
   "EL": ["EL"],
   "DE": ["DE"],
   "CONTRA": ["CONTRA"],
-  "CONTIGO": ["CONTIGO","CONTIGO_2"],
+  "CONTIGO": ["CONTIGO", "CONTIGO_2"],
   "CONMIGO": ["CONMIGO"],
   "CADA": ["CADA"],
   "ARTICULO": ["ARTICULO"],
@@ -132,11 +132,18 @@ export default function App() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1) // Control de velocidad
 
   // ── Estados para Texto a Señas ──
-  const [inputText, setInputText] = useState('')
-  const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
+  interface SignItem {
+    isSpace: boolean
+    url: string
+    label: string
+    variants?: string[]
+    currentVariant?: number
+  }
+  const [playlist, setPlaylist] = useState<SignItem[]>([])
+  const [modalPlaylist, setModalPlaylist] = useState<SignItem[]>([])
 
+  const [inputText, setInputText] = useState('')
   const [signModalOpen, setSignModalOpen] = useState(false)
-  const [modalPlaylist, setModalPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
   const [modalText, setModalText] = useState('') // NUEVO: Guardar el texto exacto
 
   const [qualityWarning, setQualityWarning] = useState<string | null>(null)
@@ -162,7 +169,7 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
-    
+
     // Cargar historial de localStorage
     const savedHistory = localStorage.getItem('handsTranslatorHistory')
     if (savedHistory) {
@@ -258,7 +265,7 @@ export default function App() {
     if (!ctx) return null
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const data = imageData.data
-    
+
     // Calcular brillo promedio
     let brightness = 0
     for (let i = 0; i < data.length; i += 4) {
@@ -279,7 +286,7 @@ export default function App() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(video, 0, 0)
-    
+
     // Chequeo de calidad
     const warning = analyzeQuality(canvas)
     if (warning) {
@@ -342,12 +349,12 @@ export default function App() {
       const word = words[i]
       if (!word) continue
       if (PALABRAS_DISPONIBLES[word]) {
-        newPlaylist.push({ 
-        isSpace: false, 
-        url: getSignUrl(PALABRAS_DISPONIBLES[word][0]), // URL construida al vuelo
-        variants: PALABRAS_DISPONIBLES[word].map(getSignUrl), // Arreglo de URLs completas
-        label: word 
-      })
+        newPlaylist.push({
+          isSpace: false,
+          url: getSignUrl(PALABRAS_DISPONIBLES[word][0]), // URL construida al vuelo
+          variants: PALABRAS_DISPONIBLES[word].map(getSignUrl), // Arreglo de URLs completas
+          label: word
+        })
       } else {
         for (const letter of word) {
           if (/[A-Z]/.test(letter)) newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
@@ -359,24 +366,28 @@ export default function App() {
   }
 
   const rotateVariant = (index: number) => {
-  setModalPlaylist(prev => {
-    const updated = [...prev]
-    const item = updated[index]
-    if (item.variants && item.variants.length > 1) {
-      // Buscamos la posición actual en el array de variantes
-      const currentIndex = item.variants.indexOf(item.url)
-      // Calculamos la siguiente
-      const nextIndex = (currentIndex + 1) % item.variants.length
-      item.url = item.variants[nextIndex]
-    }
-    return updated
-  })
-}
+    setModalPlaylist(prev =>
+      prev.map((item, i) => {
+        if (i !== index || !item.variants || item.variants.length <= 1) {
+          return item
+        }
+
+        const currentIndex = item.variants.indexOf(item.url)
+        const nextIndex = (currentIndex + 1) % item.variants.length
+
+        return {
+          ...item,
+          url: item.variants[nextIndex],
+          currentVariant: nextIndex
+        }
+      })
+    )
+  }
 
   const getSignUrl = (filename: string) => `/señas/palabras/${filename}.png`;
 
   const handleTextToSign = () => setPlaylist(generatePlaylistFromText(inputText))
-  
+
   const openSignModal = (text: string) => {
     setModalText(text)
     setModalPlaylist(generatePlaylistFromText(text))
@@ -452,9 +463,8 @@ export default function App() {
           <button
             key={i}
             onClick={() => { speak(frase); openSignModal(frase); }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-2 ${
-              theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-indigo-600 hover:text-white border border-gray-700' : 'bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200'
-            }`}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-indigo-600 hover:text-white border border-gray-700' : 'bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200'
+              }`}
           >
             <MessageCircle size={14} /> {frase}
           </button>
@@ -552,8 +562,8 @@ export default function App() {
                 <div key={idx} className={`text-xs flex items-center justify-between p-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
                   <span className="font-extrabold uppercase tracking-wide opacity-90">{alt.seña}</span>
                   <div className="flex gap-1">
-                    <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14}/></button>
-                    <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14}/></button>
+                    <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14} /></button>
+                    <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14} /></button>
                   </div>
                 </div>
               ))}
@@ -581,19 +591,19 @@ export default function App() {
 
           <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar">
             <button onClick={() => setShowHistory(!showHistory)} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-gray-300' : 'bg-gray-100 border-gray-200 text-gray-600'}`} title="Historial Offline"><History size={18} /></button>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-yellow-400' : 'bg-gray-100 border-gray-200 text-indigo-600'}`}><Sun size={18} className="hidden dark:block"/><Moon size={18} className="block dark:hidden"/></button>
-            
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-yellow-400' : 'bg-gray-100 border-gray-200 text-indigo-600'}`}><Sun size={18} className="hidden dark:block" /><Moon size={18} className="block dark:hidden" /></button>
+
             {user ? (
               <div className="flex items-center gap-2">
                 {/* ✅ NUEVO BOTÓN PARA ABRIR EL PERFIL/SUSCRIPCIONES */}
-                <button 
-                  onClick={() => setProfileModalOpen(true)} 
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:text-white text-gray-300 hover:bg-gray-800' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'}`} 
+                <button
+                  onClick={() => setProfileModalOpen(true)}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 hover:text-white text-gray-300 hover:bg-gray-800' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-600'}`}
                   title="Mi Cuenta y Suscripción"
                 >
                   <UserIcon size={18} />
                 </button>
-                
+
                 <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-red-500/20' : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`}>
                   <LogOut size={18} />
                   <span className="hidden md:inline">Salir</span>
@@ -610,7 +620,7 @@ export default function App() {
 
       {/* ═══════════ MAIN CONTENT ═══════════ */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        
+
         {/* Selector de Modos */}
         <div className={`flex flex-wrap gap-2 rounded-xl p-1.5 border mb-6 inline-flex w-full md:w-auto overflow-x-auto ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
           {[
@@ -638,7 +648,7 @@ export default function App() {
               <div className="lg:col-span-2">
                 {/* 1. Usamos la función render para que no se desmonte el video */}
                 {renderCameraView(true)}
-                
+
                 {/* 2. AQUÍ ESTÁ EL CARRUSEL DE FRAMES QUE FALTABA */}
                 {frames.length > 0 && (
                   <div className={`mt-4 p-4 rounded-xl border flex gap-3 overflow-x-auto ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
@@ -653,19 +663,19 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               <div className="lg:col-span-1">
                 <div className={`rounded-2xl border p-6 sticky top-24 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Zap size={20} className="text-indigo-500" /> Resultado</h3>
                   {processing ? (
                     <div className="flex flex-col items-center gap-3">
-                    {/* Animación de mano brillante */}
-                    <div className="relative">
-                      <Hand size={40} className="text-indigo-500 animate-pulse" />
-                      <div className="absolute inset-0 bg-indigo-400 blur-xl animate-ping opacity-50"></div>
+                      {/* Animación de mano brillante */}
+                      <div className="relative">
+                        <Hand size={40} className="text-indigo-500 animate-pulse" />
+                        <div className="absolute inset-0 bg-indigo-400 blur-xl animate-ping opacity-50"></div>
+                      </div>
+                      <p className="text-sm font-bold text-indigo-400 animate-pulse">Analizando señas...</p>
                     </div>
-                    <p className="text-sm font-bold text-indigo-400 animate-pulse">Analizando señas...</p>
-                  </div>
                   ) : result ? (
                     <ResultCard res={result} />
                   ) : (
@@ -681,14 +691,14 @@ export default function App() {
         {mode === 'conversation' && (
           /* FIX 1: Quitamos lg:h-[75vh] y ponemos h-auto para que crezca según necesite */
           <div className="flex flex-col md:flex-row gap-4 min-h-[650px] h-auto">
-            
+
             {/* Lado Oyente (Texto a Señas) */}
             <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}><Keyboard size={16}/> Escribe para mostrar señas</h3>
+              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}><Keyboard size={16} /> Escribe para mostrar señas</h3>
               <div className="flex gap-2 mb-4">
-                <input 
+                <input
                   type="text" value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTextToSign()}
-                  placeholder="Escribe aquí..." 
+                  placeholder="Escribe aquí..."
                   className={`flex-1 border rounded-xl p-3 text-sm outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`}
                 />
                 <button onClick={handleTextToSign} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-xl font-bold cursor-pointer transition-colors">Traducir</button>
@@ -712,11 +722,11 @@ export default function App() {
 
             {/* Lado Sordo (Cámara a Texto) */}
             <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col h-full ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16}/> Graba para mostrar texto</h3>
-              
+              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16} /> Graba para mostrar texto</h3>
+
               <div className="mb-4">
                 {renderCameraView(false)}
-                
+
                 {frames.length > 0 && (
                   <div className={`mt-3 p-3 rounded-xl border flex gap-2 overflow-x-auto scrollbar-thin ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200 shadow-inner'}`}>
                     {frames.map((frame, index) => (
@@ -730,15 +740,15 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               {/* Controles de Captura */}
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <button onClick={handleSequenceCapture} disabled={!cameraOn || isCapturing} className="bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                  <CircleDot size={18}/> <span>Foto</span>
+                  <CircleDot size={18} /> <span>Foto</span>
                 </button>
-                
+
                 <button onClick={isCapturing ? stopCapture : startVideoCapture} disabled={!cameraOn && !isCapturing} className={`py-2.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer transition-colors ${isCapturing ? 'bg-red-500 hover:bg-red-600 shadow-inner' : 'bg-pink-600 hover:bg-pink-700'}`}>
-                  {isCapturing ? <><Square size={18} className="animate-pulse"/> <span>{captureCountdown}s</span></> : <><Video size={18}/> <span>Grabar</span></>}
+                  {isCapturing ? <><Square size={18} className="animate-pulse" /> <span>{captureCountdown}s</span></> : <><Video size={18} /> <span>Grabar</span></>}
                 </button>
               </div>
 
@@ -747,13 +757,13 @@ export default function App() {
                 <button onClick={processFrames} disabled={processing || frames.length === 0} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center gap-2">
                   <Zap size={18} /> Traducir ({frames.length})
                 </button>
-                
+
                 <button onClick={clearFrames} disabled={frames.length === 0} className={`px-4 border rounded-xl cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800 text-gray-400' : 'border-gray-300 hover:bg-gray-100 text-gray-500'} disabled:opacity-50`} title="Limpiar fotos">
                   <Trash2 size={20} />
                 </button>
-                
+
                 <button onClick={toggleCamera} className={`px-4 border rounded-xl cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'}`} title={cameraOn ? "Apagar cámara" : "Encender cámara"}>
-                  <Camera size={20} className={cameraOn ? 'text-red-500' : (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}/>
+                  <Camera size={20} className={cameraOn ? 'text-red-500' : (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')} />
                 </button>
               </div>
 
@@ -783,8 +793,8 @@ export default function App() {
                             <div key={idx} className={`text-xs flex items-center justify-between p-2 rounded-lg border ${theme === 'dark' ? 'bg-black/30 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
                               <span className="font-extrabold uppercase tracking-wide opacity-90">{alt.seña}</span>
                               <div className="flex gap-1">
-                                <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14}/></button>
-                                <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14}/></button>
+                                <button onClick={() => speak(alt.seña)} className="text-indigo-500 hover:text-indigo-400 p-1 cursor-pointer"><Volume2 size={14} /></button>
+                                <button onClick={() => openSignModal(alt.seña)} className="text-purple-500 hover:text-purple-400 p-1 cursor-pointer"><Hand size={14} /></button>
                               </div>
                             </div>
                           ))}
@@ -834,7 +844,7 @@ export default function App() {
             </div>
             {DICCIONARIO_CATEGORIAS.map((cat, i) => (
               <div key={i} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-indigo-500"/> {cat.nombre}</h3>
+                <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-indigo-500" /> {cat.nombre}</h3>
                 <div className="flex flex-wrap gap-3">
                   {cat.palabras.map((palabra, j) => (
                     <button key={j} onClick={() => openSignModal(palabra)} className={`px-4 py-3 rounded-xl font-bold border transition-all hover:scale-105 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-indigo-500' : 'bg-gray-50 border-gray-200 hover:border-indigo-300'}`}>
@@ -850,10 +860,10 @@ export default function App() {
       </main>
 
       {/* ✅ AQUÍ ACOPLAS EL NUEVO ARCHIVO EXTRAÍDO */}
-      <LsmSection 
-        theme={theme} 
-        user={user} 
-        onAuthRequired={() => setAuthModalOpen(true)} 
+      <LsmSection
+        theme={theme}
+        user={user}
+        onAuthRequired={() => setAuthModalOpen(true)}
       />
 
       {/* ═══════════ HISTORIAL SIDEBAR (Overlay) ═══════════ */}
@@ -861,8 +871,8 @@ export default function App() {
         <div className="fixed inset-y-0 right-0 w-full sm:w-96 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
           <div className={`w-full sm:w-96 h-full p-6 shadow-2xl flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-l border-gray-800' : 'bg-white border-l border-gray-200'}`}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold flex items-center gap-2"><History/> Historial Offline</h3>
-              <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-gray-500/20"><X size={20}/></button>
+              <h3 className="text-xl font-bold flex items-center gap-2"><History /> Historial Offline</h3>
+              <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-gray-500/20"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {history.length === 0 ? <p className="text-center opacity-50 mt-10">No hay traducciones recientes.</p> : history.map((h, i) => (
@@ -870,8 +880,8 @@ export default function App() {
                   <p className="text-xs opacity-50 mb-1">{new Date(h.timestamp || Date.now()).toLocaleTimeString()}</p>
                   <p className="text-lg font-bold mb-2">{h.resultado}</p>
                   <div className="flex gap-2">
-                    <button onClick={() => speak(h.resultado)} className="p-1.5 rounded-md bg-indigo-500/10 text-indigo-500"><Volume2 size={16}/></button>
-                    <button onClick={() => openSignModal(h.resultado)} className="p-1.5 rounded-md bg-purple-500/10 text-purple-500"><Hand size={16}/></button>
+                    <button onClick={() => speak(h.resultado)} className="p-1.5 rounded-md bg-indigo-500/10 text-indigo-500"><Volume2 size={16} /></button>
+                    <button onClick={() => openSignModal(h.resultado)} className="p-1.5 rounded-md bg-purple-500/10 text-purple-500"><Hand size={16} /></button>
                   </div>
                 </div>
               ))}
@@ -885,14 +895,14 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
           {/* CAMBIO: Se cambió max-w-4xl a max-w-6xl/7xl y se redujo el padding externo de p-8 a p-4 md:p-6 */}
           <div className={`relative w-full max-w-6xl xl:max-w-7xl rounded-2xl p-4 md:p-6 shadow-2xl transition-all ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
-            
+
             <div className="flex justify-between items-center mb-4 md:mb-6">
               <h2 className={`text-xl md:text-2xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Hand className="text-purple-500" /> Traducción</h2>
               <div className="flex items-center gap-2 md:gap-4">
-                
+
                 {/* Botón de Audio */}
-                <button 
-                  onClick={() => speak(modalText)} 
+                <button
+                  onClick={() => speak(modalText)}
                   className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
                   title="Escuchar texto en voz alta"
                 >
@@ -908,7 +918,7 @@ export default function App() {
                     <option value={1.5}>1.5x (Rápido)</option>
                   </select>
                 </div>
-                
+
                 <button onClick={() => setSignModalOpen(false)} className={`p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24} /></button>
               </div>
             </div>
@@ -923,31 +933,30 @@ export default function App() {
                     <span className="text-[9px] rotate-90 uppercase font-bold tracking-wider">Espacio</span>
                   </div>
                 ) : (
-                  /* CAMBIO: Tarjetas optimizadas (p-2), responsivas y con flex-shrink-0 absoluto */
-                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-2 rounded-xl border transition-all hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
-                    {/* Imágenes responsivas: más compactas en móvil y tamaño completo en pantallas grandes */}
-                    <img 
-                      src={item.url} 
-                      alt={item.label} 
-                      className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 object-contain rounded-lg bg-white p-1" 
-                      style={{ animationDuration: `${1 / playbackSpeed}s` }} 
+                  <div
+                    onClick={() => rotateVariant(index)}
+                    className="relative cursor-pointer group"
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.label}
+                      className="w-40 h-40 object-contain rounded-lg bg-white p-1 transition-all duration-200 group-hover:scale-105"
                     />
-                    {/* Si tiene variantes, mostramos un pequeño indicador */}
+
                     {item.variants && item.variants.length > 1 && (
-                      <div className="absolute bottom-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                        {item.variants.length} v.
+                      <div className="absolute top-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                        {item.currentVariant! + 1}/{item.variants.length}
                       </div>
                     )}
-                    <span className="mt-2 font-extrabold text-sm md:text-base uppercase tracking-wider">{item.label}</span>
                   </div>
                 ))}
               </div>
             </div>
-            
+
             {/* Controles de navegación inferior */}
             <div className="mt-3 flex justify-center gap-4">
-              <button onClick={() => scrollCarousel(modalCarouselRef, 'left')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronLeft size={20}/></button>
-              <button onClick={() => scrollCarousel(modalCarouselRef, 'right')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronRight size={20}/></button>
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'left')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronLeft size={20} /></button>
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'right')} className="p-2 md:p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 cursor-pointer transition-colors"><ChevronRight size={20} /></button>
             </div>
 
           </div>
