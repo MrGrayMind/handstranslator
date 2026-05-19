@@ -715,34 +715,43 @@ export default function App() {
               <div className={`flex-1 rounded-xl border flex items-center justify-center p-4 overflow-hidden ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
                 {playlist.length > 0 ? (
                   <div className="flex gap-4 overflow-x-auto w-full items-center pb-2 scrollbar-thin">
-                    {playlist.map((item, i) => !item.isSpace && (
-                      <div
-                        key={i}
-                        onClick={() => rotatePlaylistVariant(i)}
-                        title={
-                          item.variants && item.variants.length > 1
-                            ? 'Click para cambiar variante'
-                            : undefined
-                        }
-                        className={`relative flex-none flex flex-col items-center cursor-pointer transition-all duration-200 hover:scale-105`}
-                      >
-                        <img
-                          src={item.url}
-                          className="w-24 h-24 object-contain rounded-lg bg-white p-1 border"
-                          alt={item.label}
-                        />
+                    {playlist.map((item, i) =>
+                      item.isSpace ? (
+                        <div
+                          key={i}
+                          className="flex-none w-8 h-24 flex items-center justify-center opacity-40"
+                        >
+                          <div className="w-px h-10 bg-gray-400 rounded-full" />
+                        </div>
+                      ) : (
+                        <div
+                          key={i}
+                          onClick={() => rotatePlaylistVariant(i)}
+                          title={
+                            item.variants && item.variants.length > 1
+                              ? 'Click para cambiar variante'
+                              : undefined
+                          }
+                          className="relative flex-none flex flex-col items-center cursor-pointer transition-all duration-200 hover:scale-105"
+                        >
+                          <img
+                            src={item.url}
+                            className="w-24 h-24 object-contain rounded-lg bg-white p-1 border"
+                            alt={item.label}
+                          />
 
-                        {item.variants && item.variants.length > 1 && (
-                          <div className="absolute top-1 right-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">
-                            {(item.currentVariant ?? 0) + 1}/{item.variants.length}
-                          </div>
-                        )}
+                          {item.variants && item.variants.length > 1 && (
+                            <div className="absolute top-1 right-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">
+                              {(item.currentVariant ?? 0) + 1}/{item.variants.length}
+                            </div>
+                          )}
 
-                        <span className="text-center font-extrabold mt-2 block text-sm uppercase">
-                          {item.label}
-                        </span>
-                      </div>
-                    ))}
+                          <span className="text-center font-extrabold mt-2 block text-sm uppercase">
+                            {item.label}
+                          </span>
+                        </div>
+                      )
+                    )}
                   </div>
                 ) : <p className="opacity-50 text-sm">El texto en señas aparecerá aquí</p>}
               </div>
