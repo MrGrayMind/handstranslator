@@ -53,7 +53,46 @@ interface UserLimits {
   max_duration_s: number
 }
 
-const PALABRAS_DISPONIBLES: string[] = [] // Tu diccionario local de GIFs
+const PALABRAS_DISPONIBLES: Record<string, string[]> = {
+  "YO": ["YO", "YO_2"],
+  "USTED": ["USTED"],
+  "TUYO": ["TUYO"],
+  "TU": ["TU"],
+  "TODO": ["TODO"],
+  "TODAVIA": ["TODAVIA"],
+  "TAMBIEN": ["TAMBIEN"],
+  "SUYO": ["SUYO"],
+  "PROPIO": ["PROPIO"],
+  "PRIMERO": ["PRIMERO"],
+  "POR": ["POR"],
+  "PARA": ["PARA"],
+  "NUESTRO": ["NUESTRO"],
+  "NOSOTROS": ["NOSOTROS"],
+  "NOS": ["NOS"],
+  "NI": ["NI"],
+  "MISMO": ["MISMO"],
+  "MIO": ["MIO"],
+  "MI": ["MI"],
+  "ESO": ["ESO"],
+  "ESE": ["ESE"],
+  "ESA": ["ESA"],
+  "ENTRE": ["ENTRE","ENTRE_2"],
+  "EN": ["EN"],
+  "ELLOS": ["ELLOS"],
+  "ELLA": ["ELLA"],
+  "EL": ["EL"],
+  "DE": ["DE"],
+  "CONTRA": ["CONTRA"],
+  "CONTIGO": ["CONTIGO","CONTIGO_2"],
+  "CONMIGO": ["CONMIGO"],
+  "CADA": ["CADA"],
+  "ARTICULO": ["ARTICULO"],
+  "ANTE": ["ANTE"],
+  "ALGO": ["ALGO"],
+  "ADJETIVO": ["ADJETIVO"]
+}
+
+
 const FRASES_RAPIDAS = [
   "Hola, soy una persona sorda",
   "Necesito ayuda por favor",
@@ -303,7 +342,7 @@ export default function App() {
       const word = words[i]
       if (!word) continue
       if (PALABRAS_DISPONIBLES.includes(word)) {
-        newPlaylist.push({ isSpace: false, url: `/señas/palabras/${word}.gif`, label: word })
+        newPlaylist.push({ isSpace: false, url: `/señas/palabras/${word}.png`, label: word })
       } else {
         for (const letter of word) {
           if (/[A-Z]/.test(letter)) newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
