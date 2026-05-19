@@ -584,10 +584,30 @@ export default function App() {
                 )}
               </div>
               
+              {/* Controles de Captura */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button onClick={handleSequenceCapture} disabled={!cameraOn || isCapturing} className="bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                  <CircleDot size={18}/> <span>Foto</span>
+                </button>
+                
+                <button onClick={isCapturing ? stopCapture : startVideoCapture} disabled={!cameraOn && !isCapturing} className={`py-2.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer transition-colors ${isCapturing ? 'bg-red-500 hover:bg-red-600 shadow-inner' : 'bg-pink-600 hover:bg-pink-700'}`}>
+                  {isCapturing ? <><Square size={18} className="animate-pulse"/> <span>{captureCountdown}s</span></> : <><Video size={18}/> <span>Grabar</span></>}
+                </button>
+              </div>
+
+              {/* Controles de Acción (Traducir, Limpiar, Toggle Cámara) */}
               <div className="flex gap-2 mb-4">
-                <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors">Capturar</button>
-                <button onClick={processFrames} disabled={processing || frames.length===0} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors">Traducir</button>
-                <button onClick={toggleCamera} className="px-4 border rounded-xl dark:border-gray-700 cursor-pointer"><Camera size={20} className={cameraOn ? 'text-red-500' : ''}/></button>
+                <button onClick={processFrames} disabled={processing || frames.length === 0} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-colors flex items-center justify-center gap-2">
+                  <Zap size={18} /> Traducir ({frames.length})
+                </button>
+                
+                <button onClick={clearFrames} disabled={frames.length === 0} className={`px-4 border rounded-xl cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800 text-gray-400' : 'border-gray-300 hover:bg-gray-100 text-gray-500'} disabled:opacity-50`} title="Limpiar fotos">
+                  <Trash2 size={20} />
+                </button>
+                
+                <button onClick={toggleCamera} className={`px-4 border rounded-xl cursor-pointer transition-colors ${theme === 'dark' ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'}`} title={cameraOn ? "Apagar cámara" : "Encender cámara"}>
+                  <Camera size={20} className={cameraOn ? 'text-red-500' : (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}/>
+                </button>
               </div>
 
               {/* FIX 2: flex-1 y overflow-y-auto scrollbar-thin agregados a la caja de resultados */}
