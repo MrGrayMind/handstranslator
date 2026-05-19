@@ -89,7 +89,8 @@ const PALABRAS_DISPONIBLES: Record<string, string[]> = {
   "ARTICULO": ["ARTICULO"],
   "ANTE": ["ANTE"],
   "ALGO": ["ALGO"],
-  "ADJETIVO": ["ADJETIVO"]
+  "ADJETIVO": ["ADJETIVO"],
+  "COMIDA": ["COMIDA", "COMIDA_2"]
 }
 
 
