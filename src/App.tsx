@@ -187,6 +187,39 @@ export default function App() {
   // ════════════════════════════════════════════
   //  FRAME CAPTURE
   // ════════════════════════════════════════════
+
+  // ════════════════════════════════════════════
+  //  KEYBOARD SHORTCUTS
+  // ════════════════════════════════════════════
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar si el usuario está escribiendo en un input o textarea
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return
+      }
+
+      // Detectar la barra espaciadora
+      if (e.code === 'Space') {
+        e.preventDefault() // Evita que la página haga scroll hacia abajo
+
+        if (mode === 'sequence') {
+          handleSequenceCapture()
+        } else if (mode === 'video') {
+          if (isCapturing) {
+            stopCapture()
+          } else {
+            startVideoCapture()
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    // Limpiar el event listener cuando el componente se desmonte o cambien las dependencias
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mode, isCapturing, cameraOn, user, limits, frames]) // Dependencias necesarias para evitar datos obsoletos
+
   const captureFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
