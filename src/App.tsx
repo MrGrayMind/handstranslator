@@ -530,9 +530,11 @@ export default function App() {
           </div>
         )}
 
-        {/* ── MODO: CONVERSACIÓN (Pantalla Dividida Mejorada) ── */}
+        {/* ── MODO: CONVERSACIÓN (Pantalla Dividida Mejorada y Responsiva) ── */}
         {mode === 'conversation' && (
-          <div className="flex flex-col md:flex-row gap-4 min-h-[650px] lg:h-[75vh]">
+          /* FIX 1: Quitamos lg:h-[75vh] y ponemos h-auto para que crezca según necesite */
+          <div className="flex flex-col md:flex-row gap-4 min-h-[650px] h-auto">
+            
             {/* Lado Oyente (Texto a Señas) */}
             <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}><Keyboard size={16}/> Escribe para mostrar señas</h3>
@@ -562,13 +564,12 @@ export default function App() {
             <div className="hidden md:flex flex-col items-center justify-center text-gray-300 dark:text-gray-700"><div className="w-px h-full bg-current"></div><MessageCircle className="my-2" /><div className="w-px h-full bg-current"></div></div>
 
             {/* Lado Sordo (Cámara a Texto) */}
-            <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div className={`flex-1 rounded-2xl border p-5 md:p-6 flex flex-col h-full ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16}/> Graba para mostrar texto</h3>
               
               <div className="mb-4">
                 {renderCameraView(false)}
                 
-                {/* CAMBIO 1: Agregado el carrusel de frames compactos debajo de la cámara */}
                 {frames.length > 0 && (
                   <div className={`mt-3 p-3 rounded-xl border flex gap-2 overflow-x-auto scrollbar-thin ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200 shadow-inner'}`}>
                     {frames.map((frame, index) => (
@@ -589,13 +590,12 @@ export default function App() {
                 <button onClick={toggleCamera} className="px-4 border rounded-xl dark:border-gray-700 cursor-pointer"><Camera size={20} className={cameraOn ? 'text-red-500' : ''}/></button>
               </div>
 
-              {/* Zona de Resultados con las mejoras de visualización */}
-              <div className={`p-4 rounded-xl text-center border flex flex-col items-center justify-center transition-colors min-h-[140px] ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700' : 'bg-indigo-50/60 border-indigo-100'}`}>
+              {/* FIX 2: flex-1 y overflow-y-auto scrollbar-thin agregados a la caja de resultados */}
+              <div className={`p-4 rounded-xl text-center border flex flex-col items-center justify-center transition-colors min-h-[140px] flex-1 overflow-y-auto scrollbar-thin ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700' : 'bg-indigo-50/60 border-indigo-100'}`}>
                 {processing ? (
                   <Loader2 className="animate-spin text-indigo-500" size={28} />
                 ) : result ? (
                   <div className="w-full space-y-3 animate-in fade-in zoom-in-95 duration-200">
-                    {/* CAMBIO 2: Agregado el botón de la Mano junto al de audio */}
                     <div className="flex items-center justify-center gap-3">
                       <p className="text-3xl font-extrabold uppercase tracking-wide">{result.resultado}</p>
                       <button onClick={() => speak(result.resultado)} className={`p-1.5 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:bg-gray-700' : 'text-indigo-600 hover:bg-indigo-200'}`} title="Escuchar"><Volume2 size={20} /></button>
@@ -608,7 +608,6 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* CAMBIO 3: Renderizado estético de las alternativas sugeridas por Claude */}
                     {result.alternativas && result.alternativas.length > 0 && (
                       <div className="text-left border-t border-gray-300 dark:border-gray-700/60 pt-2.5 mt-2 w-full">
                         <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>¿Quisiste decir?</p>
