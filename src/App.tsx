@@ -863,8 +863,8 @@ export default function App() {
                 onClick={() => speak(inputText)}
                 disabled={!inputText.trim()}
                 className={`px-5 py-4 rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50 ${theme === 'dark'
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'bg-purple-600 hover:bg-purple-700 text-white'
                   }`}
                 title="Reproducir texto"
               >
@@ -938,12 +938,39 @@ export default function App() {
 
       </main>
 
-      {/* ✅ AQUÍ ACOPLAS EL NUEVO ARCHIVO EXTRAÍDO */}
+      {/* AQUÍ ACOPLAS EL NUEVO ARCHIVO EXTRAÍDO */}
       <LsmSection
         theme={theme}
         user={user}
         onAuthRequired={() => setAuthModalOpen(true)}
       />
+
+      {/* ═══════════ FOOTER ═══════════ */}
+      <footer className={`border-t py-8 mt-auto transition-colors ${theme === 'dark' ? 'bg-gray-950 border-gray-900 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+
+          {/* Logo y Nombre */}
+          <div className="flex items-center gap-2 opacity-80">
+            <Hand size={18} className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'} />
+            <span className={`font-extrabold tracking-wide ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              HandsTranslator
+            </span>
+          </div>
+
+          {/* Copyright (Año dinámico) */}
+          <p className="text-sm text-center">
+            &copy; {new Date().getFullYear()} HandsTranslator. Todos los derechos reservados.
+          </p>
+
+          {/* Enlaces Legales o Sociales */}
+          <div className="flex items-center gap-6 text-sm font-medium">
+            <a href="#" className={`transition-colors ${theme === 'dark' ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Privacidad</a>
+            <a href="#" className={`transition-colors ${theme === 'dark' ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Términos</a>
+            <a href="#" className={`transition-colors ${theme === 'dark' ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Contacto</a>
+          </div>
+
+        </div>
+      </footer>
 
       {/* ═══════════ HISTORIAL SIDEBAR (Overlay) ═══════════ */}
       {showHistory && (
