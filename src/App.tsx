@@ -22,15 +22,21 @@ import {
   Layers,
   ShieldCheck,
   X,
-  MessageSquare,
-  Send,
   Volume2,
   Sun,
   Moon,
   Keyboard,
+  SplitSquareHorizontal,
+  BookOpen,
+  MessageCircle,
+  History,
+  ThumbsUp,
+  ThumbsDown,
+  Gauge
 } from 'lucide-react'
 
-type Mode = 'sequence' | 'video' | 'text'
+// ── Tipos y Constantes ──
+type Mode = 'sequence' | 'video' | 'text' | 'conversation' | 'dictionary'
 
 interface TranslationResult {
   resultado: string
@@ -38,6 +44,7 @@ interface TranslationResult {
   confianza: string
   analisis_movimiento?: string
   alternativas: { seña: string }[]
+  timestamp?: number // Para el historial
 }
 
 interface UserLimits {
@@ -45,9 +52,21 @@ interface UserLimits {
   max_duration_s: number
 }
 
-// DICCIONARIO LOCAL: Nombres exactos de los GIFs en /public/señas/palabras/
-const PALABRAS_DISPONIBLES = []
+const PALABRAS_DISPONIBLES: string[] = [] // Tu diccionario local de GIFs
+const FRASES_RAPIDAS = [
+  "Hola, soy una persona sorda",
+  "Necesito ayuda por favor",
+  "¿Cuánto cuesta esto?",
+  "Por favor, háblame de frente",
+  "Necesito un médico",
+  "Gracias"
+]
 
+const DICCIONARIO_CATEGORIAS = [
+  { nombre: 'Básico', palabras: ['HOLA', 'ADIOS', 'GRACIAS', 'POR FAVOR', 'PERDON'] },
+  { nombre: 'Emergencia', palabras: ['AYUDA', 'MEDICO', 'HOSPITAL', 'POLICIA', 'DOLOR'] },
+  { nombre: 'Familia', palabras: ['MAMA', 'PAPA', 'HERMANO', 'HIJO', 'ABUELO'] }
+]
 
 export default function App() {
   // ── Auth state ──
@@ -65,11 +84,16 @@ export default function App() {
   const [captureCountdown, setCaptureCountdown] = useState(0)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
+  // ── Nuevos Estados (Mejoras UX) ──
+  const [flash, setFlash] = useState(false) // Feedback visual
+  const [history, setHistory] = useState<TranslationResult[]>([]) // Historial offline
+  const [showHistory, setShowHistory] = useState(false)
+  const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null)
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1) // Control de velocidad
+
   // ── Estados para Texto a Señas ──
   const [inputText, setInputText] = useState('')
   const [playlist, setPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
-  
-  // NUEVO: Estados para el Modal de Señas de los resultados
   const [signModalOpen, setSignModalOpen] = useState(false)
   const [modalPlaylist, setModalPlaylist] = useState<{ isSpace: boolean; url: string; label: string }[]>([])
 
@@ -86,80 +110,59 @@ export default function App() {
   const streamRef = useRef<MediaStream | null>(null)
   const captureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
+  const modalCarouselRef = useRef<HTMLDivElement>(null)
 
   // ════════════════════════════════════════════
-  //  AUTH
+  //  INIT & AUTH & HISTORY
   // ════════════════════════════════════════════
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-    })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+    
+    // Cargar historial de localStorage
+    const savedHistory = localStorage.getItem('handsTranslatorHistory')
+    if (savedHistory) {
+      try { setHistory(JSON.parse(savedHistory)) } catch (e) { console.error('Error loading history') }
+    }
     return () => subscription.unsubscribe()
   }, [])
 
-  // ════════════════════════════════════════════
-  //  FETCH USER LIMITS
-  // ════════════════════════════════════════════
   useEffect(() => {
-    if (user) {
-      setLimits(null)
-      fetchUserLimits()
-    } else {
-      setLimits(null)
-    }
+    if (user) fetchUserLimits()
+    else setLimits(null)
   }, [user])
 
   const fetchUserLimits = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('user-status')
-
-      if (error || !data) {
-        setLimits({
-          can_use: false,
-          reason: 'error',
-          limits: { max_frames: 0, max_duration_s: 0 }
-        })
-        return
-      }
-
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-      setLimits(parsedData);
-
+      if (error || !data) throw new Error('Error fetching limits')
+      setLimits(typeof data === 'string' ? JSON.parse(data) : data)
     } catch (err) {
-      console.error(err)
-      setLimits({
-        can_use: true,
-        reason: 'exception',
-        limits: {
-          max_frames: 10,
-          max_duration_s: 5
-        }
-      })
+      setLimits({ can_use: true, reason: 'exception', limits: { max_frames: 10, max_duration_s: 5 } })
     }
   }
 
+  const saveToHistory = (newResult: TranslationResult) => {
+    const resultWithTime = { ...newResult, timestamp: Date.now() }
+    setHistory(prev => {
+      const updated = [resultWithTime, ...prev].slice(0, 15) // Guardar últimos 15
+      localStorage.setItem('handsTranslatorHistory', JSON.stringify(updated))
+      return updated
+    })
+  }
+
   // ════════════════════════════════════════════
-  //  CAMERA
+  //  CAMERA & CAPTURE
   // ════════════════════════════════════════════
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-      })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } })
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
         setCameraOn(true)
       }
     } catch (err) {
-      console.error('Error accessing camera:', err)
       alert('No se pudo acceder a la cámara. Verifica los permisos.')
     }
   }
@@ -169,56 +172,33 @@ export default function App() {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
+    if (videoRef.current) videoRef.current.srcObject = null
     setCameraOn(false)
     stopCapture()
   }
 
-  const toggleCamera = () => {
-    if (cameraOn) {
-      stopCamera()
-    } else {
-      startCamera()
-    }
-  }
+  const toggleCamera = () => cameraOn ? stopCamera() : startCamera()
 
-  // ════════════════════════════════════════════
-  //  FRAME CAPTURE
-  // ════════════════════════════════════════════
-
-  // ════════════════════════════════════════════
-  //  KEYBOARD SHORTCUTS
-  // ════════════════════════════════════════════
+  // Atajos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignorar si el usuario está escribiendo en un input o textarea
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
-        return
-      }
-
-      // Detectar la barra espaciadora
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
       if (e.code === 'Space') {
-        e.preventDefault() // Evita que la página haga scroll hacia abajo
-
-        if (mode === 'sequence') {
-          handleSequenceCapture()
-        } else if (mode === 'video') {
-          if (isCapturing) {
-            stopCapture()
-          } else {
-            startVideoCapture()
-          }
-        }
+        e.preventDefault()
+        if (mode === 'sequence' || mode === 'conversation') handleSequenceCapture()
+        else if (mode === 'video') isCapturing ? stopCapture() : startVideoCapture()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
-
-    // Limpiar el event listener cuando el componente se desmonte o cambien las dependencias
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mode, isCapturing, cameraOn, user, limits, frames]) // Dependencias necesarias para evitar datos obsoletos
+  }, [mode, isCapturing, cameraOn, user, limits, frames])
+
+  const triggerFeedback = () => {
+    setFlash(true)
+    setTimeout(() => setFlash(false), 100)
+    // Feedback háptico si está disponible en el dispositivo
+    if (navigator.vibrate) navigator.vibrate(50)
+  }
 
   const captureFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
@@ -229,45 +209,31 @@ export default function App() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(video, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-    setFrames((prev) => [...prev, dataUrl])
+    triggerFeedback()
+    setFrames((prev) => [...prev, canvas.toDataURL('image/jpeg', 0.8)])
   }, [])
 
   const handleSequenceCapture = () => {
     if (!user) return setAuthModalOpen(true)
-    if (!limits) return alert('Cargando límites...')
-    if (!limits.can_use) return alert(limits.reason || 'No puedes usar el servicio en este momento')
-
-    const maxFrames = limits.limits.max_frames || 10
-    if (frames.length >= maxFrames) {
-      alert(`Has alcanzado el límite máximo de ${maxFrames} frames permitidos.`)
-      return
-    }
-
+    if (!limits?.can_use) return alert(limits?.reason || 'No puedes usar el servicio ahora')
+    if (frames.length >= (limits.limits.max_frames || 10)) return alert('Límite de frames alcanzado')
     captureFrame()
   }
 
   const startVideoCapture = () => {
     if (!user) return setAuthModalOpen(true)
-    if (!limits) return alert('Cargando límites...')
-    if (!limits.can_use) return alert(limits.reason || 'No puedes usar el servicio en este momento')
     if (!cameraOn) return alert('Primero enciende la cámara')
-
     clearFrames()
     setIsCapturing(true)
-
     const maxFrames = Math.max(1, limits?.limits.max_frames || 10)
     const maxDuration = limits?.limits.max_duration_s || 5
     let frameCount = 0
-
     setCaptureCountdown(maxDuration)
-    const intervalMs = (maxDuration / maxFrames) * 1000
-
     captureIntervalRef.current = setInterval(() => {
       captureFrame()
       frameCount++
       if (frameCount >= maxFrames) stopCapture()
-    }, intervalMs)
+    }, (maxDuration / maxFrames) * 1000)
   }
 
   const stopCapture = () => {
@@ -280,15 +246,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isCapturing || captureCountdown <= 0) return
-    const timer = setTimeout(() => {
-      setCaptureCountdown((prev) => {
-        if (prev <= 1) {
-          stopCapture()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const timer = setTimeout(() => setCaptureCountdown(p => p <= 1 ? (stopCapture(), 0) : p - 1), 1000)
     return () => clearTimeout(timer)
   }, [isCapturing, captureCountdown])
 
@@ -299,802 +257,424 @@ export default function App() {
     if (!text.trim()) return []
     const cleanText = text.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     const words = cleanText.split(/\s+/)
-
     let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i]
       if (!word) continue
-
       if (PALABRAS_DISPONIBLES.includes(word)) {
         newPlaylist.push({ isSpace: false, url: `/señas/palabras/${word}.gif`, label: word })
       } else {
         for (const letter of word) {
-          if (/[A-Z]/.test(letter)) {
-            newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
-          }
+          if (/[A-Z]/.test(letter)) newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
         }
       }
-
-      if (i < words.length - 1) {
-        newPlaylist.push({ isSpace: true, url: '', label: '' })
-      }
+      if (i < words.length - 1) newPlaylist.push({ isSpace: true, url: '', label: '' })
     }
     return newPlaylist
   }
 
-  const handleTextToSign = () => {
-    setPlaylist(generatePlaylistFromText(inputText))
-  }
-
+  const handleTextToSign = () => setPlaylist(generatePlaylistFromText(inputText))
+  
   const openSignModal = (text: string) => {
     setModalPlaylist(generatePlaylistFromText(text))
     setSignModalOpen(true)
   }
 
   // ════════════════════════════════════════════
-  //  CHANGE MODE
+  //  PROCESS & UTILS
   // ════════════════════════════════════════════
   const handleModeChange = (newMode: Mode) => {
     if (mode !== newMode) {
       setMode(newMode)
       clearFrames()
       if (isCapturing) stopCapture()
-      // Si entramos a modo texto, apagamos la cámara
-      if (newMode === 'text' && cameraOn) stopCamera()
+      if ((newMode === 'text' || newMode === 'dictionary') && cameraOn) stopCamera()
     }
   }
 
-  // ════════════════════════════════════════════
-  //  PROCESS FRAMES
-  // ════════════════════════════════════════════
   const processFrames = async () => {
     if (!user) return setAuthModalOpen(true)
     if (frames.length === 0) return alert('No hay frames para procesar')
 
     setProcessing(true)
     setResult(null)
+    setFeedbackGiven(null)
 
     try {
-      const { data: existingFiles, error: listError } = await supabase.storage.from('frames').list(user.id)
-      if (listError) throw new Error(`Error al buscar frames anteriores: ${listError.message}`)
+      // Limpiar anteriores
+      const { data: existingFiles } = await supabase.storage.from('frames').list(user.id)
+      if (existingFiles?.length) await supabase.storage.from('frames').remove(existingFiles.map(f => `${user.id}/${f.name}`))
 
-      if (existingFiles && existingFiles.length > 0) {
-        const filesToRemove = existingFiles.map((file) => `${user.id}/${file.name}`)
-        const { error: removeError } = await supabase.storage.from('frames').remove(filesToRemove)
-        if (removeError) throw new Error(`Error al limpiar frames antiguos: ${removeError.message}`)
-      }
-
-      const uploadPromises = frames.map(async (frame, index) => {
+      // Subir nuevos
+      await Promise.all(frames.map(async (frame, index) => {
         const response = await fetch(frame)
         const blob = await response.blob()
+        await supabase.storage.from('frames').upload(`${user.id}/frame${index + 1}.jpg`, blob, { upsert: true, contentType: 'image/jpeg' })
+      }))
 
-        const { error: uploadError } = await supabase.storage
-          .from('frames')
-          .upload(`${user.id}/frame${index + 1}.jpg`, blob, { upsert: true, contentType: 'image/jpeg' })
-
-        if (uploadError) throw new Error(`Fallo al subir el frame ${index + 1}: ${uploadError.message}`)
-      })
-
-      await Promise.all(uploadPromises)
-
+      // Llamar IA
       const { data, error } = await supabase.functions.invoke('translate')
-
-      if (error) {
-        console.error('Error from translate:', error)
-        alert('Error al procesar los frames: ' + (error.message || 'Error desconocido'))
-      } else if (data) {
+      if (error) throw error
+      if (data) {
         setResult(data)
+        saveToHistory(data)
       }
     } catch (err: any) {
-      console.error('Error processing:', err)
-      alert(err.message || 'Error al procesar los frames')
+      alert('Error al procesar: ' + (err.message || 'Desconocido'))
     } finally {
       setProcessing(false)
     }
   }
 
-  // ════════════════════════════════════════════
-  //  CLEAR & UTILS
-  // ════════════════════════════════════════════
-  const clearFrames = () => {
-    setFrames([])
-    setResult(null)
-  }
-
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const scrollAmount = 160
-      carouselRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      })
-    }
-  }
-
-  const getConfidenceColor = (confianza: string) => {
-    switch (confianza.toLowerCase()) {
-      case 'alto': return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'medio': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'bajo': return 'bg-red-500/20 text-red-400 border-red-500/30'
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-    }
-  }
-
-  const getTypeColor = (tipo: string) => {
-    switch (tipo.toLowerCase()) {
-      case 'dactilologia': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'seña-palabra': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'numero': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-    }
-  }
-
-  const handleLogout = async () => {
-    stopCamera()
-    clearFrames()
-    await supabase.auth.signOut()
-  }
+  const clearFrames = () => { setFrames([]); setResult(null); setFeedbackGiven(null); }
+  const scrollCarousel = (ref: any, dir: 'left' | 'right') => ref.current?.scrollBy({ left: dir === 'left' ? -160 : 160, behavior: 'smooth' })
 
   const speak = (text: string) => {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
-    const voices = window.speechSynthesis.getVoices()
-    const bestVoice = voices.find(v => v.lang.includes('es') && v.name.includes('Google'))
-      || voices.find(v => v.lang.includes('es'))
-      || voices[0]
-
-    if (bestVoice) utterance.voice = bestVoice
-    utterance.volume = 0.8
     utterance.lang = 'es-MX'
-    utterance.rate = 0.9
     window.speechSynthesis.speak(utterance)
   }
 
+  const handleLogout = async () => { stopCamera(); clearFrames(); await supabase.auth.signOut(); }
+
   // ════════════════════════════════════════════
-  //  RENDER
+  //  COMPONENTES REUTILIZABLES (UI)
+  // ════════════════════════════════════════════
+  const QuickPhrases = () => (
+    <div className="mb-6">
+      <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Frases Rápidas (Un clic)</p>
+      <div className="flex flex-wrap gap-2">
+        {FRASES_RAPIDAS.map((frase, i) => (
+          <button
+            key={i}
+            onClick={() => { speak(frase); openSignModal(frase); }}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-2 ${
+              theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-indigo-600 hover:text-white border border-gray-700' : 'bg-white text-gray-700 hover:bg-indigo-50 border border-gray-200'
+            }`}
+          >
+            <MessageCircle size={14} /> {frase}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const CameraView = ({ showControls = true }) => (
+    <div className="space-y-4">
+      <div className={`relative rounded-2xl border overflow-hidden transition-all duration-100 ${flash ? 'border-white bg-white scale-[1.01]' : theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'}`}>
+        <div className={`aspect-video relative flex items-center justify-center ${flash ? 'opacity-50' : 'opacity-100'}`}>
+          <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${cameraOn ? 'block' : 'hidden'}`} />
+          {!cameraOn && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
+              <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
+                <Camera size={48} className="text-gray-500" />
+              </div>
+              <p className="text-gray-400 text-sm font-medium">Enciende la cámara</p>
+            </div>
+          )}
+          {isCapturing && (
+            <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+              <CircleDot size={12} className="text-white animate-pulse" />
+              <span className="text-white text-xs font-bold">REC {captureCountdown}s</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showControls && (
+        <div className="flex flex-wrap gap-3">
+          <button onClick={toggleCamera} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${cameraOn ? 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20'}`}>
+            {cameraOn ? <><CameraOff size={18} /> Apagar</> : <><Camera size={18} /> Encender</>}
+          </button>
+
+          {mode === 'video' ? (
+            <button onClick={isCapturing ? stopCapture : startVideoCapture} disabled={!cameraOn && !isCapturing} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm shadow-lg cursor-pointer ${isCapturing ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50'}`}>
+              {isCapturing ? <><Square size={18} /> Detener</> : <><Video size={18} /> Grabar Video</>}
+            </button>
+          ) : (
+            <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex items-center gap-2 px-5 py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium text-sm shadow-lg disabled:opacity-50 cursor-pointer">
+              <CircleDot size={18} /> Capturar Frame
+            </button>
+          )}
+
+          <button onClick={processFrames} disabled={processing || frames.length === 0} className="flex items-center gap-2 px-5 py-2.5 text-white bg-purple-600 hover:bg-purple-700 rounded-xl font-medium text-sm shadow-lg disabled:opacity-50 cursor-pointer">
+            {processing ? <><Loader2 size={18} className="animate-spin" /> Procesando</> : <><Zap size={18} /> Traducir</>}
+          </button>
+
+          <button onClick={clearFrames} disabled={frames.length === 0} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm border disabled:opacity-50 cursor-pointer ${theme === 'dark' ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-white text-gray-700'}`}>
+            <Trash2 size={18} /> Limpiar ({frames.length})
+          </button>
+        </div>
+      )}
+    </div>
+  )
+
+  const ResultCard = ({ res }: { res: TranslationResult }) => (
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+      <div className={`border rounded-xl p-6 text-center relative ${theme === 'dark' ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-indigo-500/30' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-inner'}`}>
+        <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-600'}`}>Traducción IA</p>
+        <div className="flex items-center justify-center gap-3">
+          <p className={`text-4xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{res.resultado}</p>
+          <button onClick={() => speak(res.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'}`}><Volume2 size={24} /></button>
+          <button onClick={() => openSignModal(res.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:bg-purple-500/30' : 'text-purple-600 hover:bg-purple-200'}`}><Hand size={24} /></button>
+        </div>
+      </div>
+
+      {/* Botones de Feedback */}
+      <div className="flex items-center justify-between px-2">
+        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${res.confianza.toLowerCase() === 'alto' ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'}`}>
+          Confianza: {res.confianza}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>¿Correcto?</span>
+          <button onClick={() => setFeedbackGiven('up')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'up' ? 'bg-green-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsUp size={16} /></button>
+          <button onClick={() => setFeedbackGiven('down')} className={`p-1.5 rounded-md transition-colors ${feedbackGiven === 'down' ? 'bg-red-500 text-white' : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-200'}`}><ThumbsDown size={16} /></button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ════════════════════════════════════════════
+  //  RENDER PRINCIPAL
   // ════════════════════════════════════════════
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
-      }`}>
-      {/* Hidden canvas for frame capture */}
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <canvas ref={canvasRef} className="hidden" />
 
       {/* ═══════════ HEADER ═══════════ */}
-      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200 shadow-sm'
-        }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-600/20">
-                <Hand size={24} className="text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                HandsTranslator
-              </span>
-            </div>
+      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200 shadow-sm'}`}>
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg"><Hand size={24} className="text-white" /></div>
+            <span className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent hidden sm:block">HandsTranslator</span>
+          </div>
 
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`p-2.5 rounded-xl transition-all border cursor-pointer ${theme === 'dark'
-                    ? 'bg-gray-800/50 border-gray-700 text-yellow-400 hover:bg-gray-800'
-                    : 'bg-gray-100 border-gray-200 text-indigo-600 hover:bg-gray-200'
-                  }`}
-                title={theme === 'dark' ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
-              {user ? (
-                <>
-                  <button
-                    onClick={() => setProfileModalOpen(true)}
-                    className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${theme === 'dark'
-                        ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
-                      }`}
-                    title="Editar Perfil"
-                  >
-                    <UserIcon size={16} />
-                    <span className="max-w-[120px] truncate">{user.user_metadata?.username || user.email}</span>
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium cursor-pointer ${theme === 'dark'
-                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
-                      }`}
-                  >
-                    <LogOut size={18} />
-                    <span className="hidden sm:inline">Salir</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setAuthModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium text-sm shadow-lg shadow-indigo-600/25 cursor-pointer"
-                >
-                  <UserIcon size={18} />
-                  <span className="hidden sm:inline">Iniciar Sesión</span>
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar">
+            <button onClick={() => setShowHistory(!showHistory)} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-gray-300' : 'bg-gray-100 border-gray-200 text-gray-600'}`} title="Historial Offline"><History size={18} /></button>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700 text-yellow-400' : 'bg-gray-100 border-gray-200 text-indigo-600'}`}><Sun size={18} className="hidden dark:block"/><Moon size={18} className="block dark:hidden"/></button>
+            
+            {user ? (
+              <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:bg-red-50'}`}><LogOut size={18} /><span className="hidden md:inline">Salir</span></button>
+            ) : (
+              <button onClick={() => setAuthModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm shadow-lg"><UserIcon size={18} /> Entrar</button>
+            )}
           </div>
         </div>
       </header>
 
       {/* ═══════════ MAIN CONTENT ═══════════ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ── Mode Selector ── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className={`flex flex-wrap rounded-xl p-1.5 border transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-            }`}>
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        
+        {/* Selector de Modos */}
+        <div className={`flex flex-wrap gap-2 rounded-xl p-1.5 border mb-6 inline-flex w-full md:w-auto overflow-x-auto ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+          {[
+            { id: 'sequence', icon: Layers, label: 'Secuencia' },
+            { id: 'video', icon: Video, label: 'Video' },
+            { id: 'conversation', icon: SplitSquareHorizontal, label: 'Conversación' },
+            { id: 'text', icon: Keyboard, label: 'Teclado' },
+            { id: 'dictionary', icon: BookOpen, label: 'Diccionario' }
+          ].map(m => (
             <button
-              onClick={() => handleModeChange('sequence')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'sequence'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+              key={m.id}
+              onClick={() => handleModeChange(m.id as Mode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${mode === m.id ? 'bg-indigo-600 text-white shadow-md' : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
             >
-              <Layers size={16} />
-              Secuencia
+              <m.icon size={16} /> {m.label}
             </button>
-            <button
-              onClick={() => handleModeChange('video')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'video'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              <Video size={16} />
-              Video
-            </button>
-            {/* BOTÓN TEXTO A SEÑAS */}
-            <button
-              onClick={() => handleModeChange('text')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${mode === 'text'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              <Keyboard size={16} />
-              Texto a señas
-            </button>
-          </div>
-
-          {user && limits && mode !== 'text' && (
-            <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-              }`}>
-              {limits.can_use ? (
-                <>
-                  <ShieldCheck size={14} className="text-green-500" />
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                    Máx. {limits.limits.max_frames} frames · {limits.limits.max_duration_s}s video
-                  </span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle size={14} className="text-yellow-500" />
-                  <span className="text-yellow-600 dark:text-yellow-400">{limits.reason}</span>
-                </>
-              )}
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* ── Main Workspace ── */}
-        {mode === 'text' ? (
-          /* ═══════════ VISTA TEXTO A SEÑAS ═══════════ */
-          <div className={`rounded-2xl border p-6 flex flex-col gap-6 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-            }`}>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()}
-                placeholder="Escribe una palabra o frase para traducir a señas..."
-                className={`flex-1 border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${theme === 'dark'
-                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500'
-                    : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400'
-                  }`}
-              />
-              <button
-                onClick={handleTextToSign}
-                className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg cursor-pointer ${theme === 'dark'
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
-                  }`}
-              >
-                Traducir
-              </button>
-            </div>
-
-            {/* Carrusel de Señas */}
-            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-200'
-              }`}>
-              {playlist.length > 0 ? (
-                <div
-                  className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center"
-                  style={{ scrollbarWidth: 'thin' }}
-                >
-                  {playlist.map((item, index) => (
-                    item.isSpace ? (
-                      /* TARJETA DE ESPACIO VACÍO */
-                      <div
-                        key={index}
-                        className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${theme === 'dark' ? 'border-gray-500' : 'border-gray-400'
-                          }`}
-                      >
-                        <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                          }`}>
-                          Espacio
-                        </span>
-                      </div>
-                    ) : (
-                      /* TARJETA DE SEÑA NORMAL */
-                      <div
-                        key={index}
-                        className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${theme === 'dark'
-                            ? 'bg-gray-800 border-gray-700 hover:border-indigo-500/50'
-                            : 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
-                          }`}
-                      >
-                        <img
-                          src={item.url}
-                          alt={`Seña para ${item.label}`}
-                          className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-                            }`}
-                        />
-                        <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'
-                          }`}>
-                          {item.label}
-                        </span>
-                      </div>
-                    )
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center w-full gap-4 opacity-70">
-                  <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                    <Keyboard size={48} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
-                  </div>
-                  <p className={`font-medium text-lg ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Tu traducción aparecerá aquí
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* ═══════════ VISTA CÁMARA (SECUENCIA / VIDEO) ═══════════ */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className={`relative rounded-2xl border overflow-hidden transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-black border-gray-200 shadow-sm'
-                }`}>
-                <div className="aspect-video relative flex items-center justify-center bg-black">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover ${cameraOn ? 'block' : 'hidden'}`}
-                  />
-                  {!cameraOn && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                      <div className={`p-6 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-900'}`}>
-                        <Camera size={48} className="text-gray-500" />
-                      </div>
-                      <p className="text-gray-400 text-sm font-medium">
-                        Enciende la cámara para comenzar
-                      </p>
-                    </div>
-                  )}
-                  {isCapturing && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
-                      <CircleDot size={12} className="text-white animate-pulse" />
-                      <span className="text-white text-xs font-bold">
-                        REC {captureCountdown}s
-                      </span>
-                    </div>
+        {/* ── MODO: SECUENCIA / VIDEO ── */}
+        {(mode === 'sequence' || mode === 'video') && (
+          <div>
+            <QuickPhrases />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <CameraView />
+              </div>
+              <div className="lg:col-span-1">
+                <div className={`rounded-2xl border p-6 sticky top-24 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                  <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Zap size={20} className="text-indigo-500" /> Resultado</h3>
+                  {processing ? (
+                    <div className="py-12 flex flex-col items-center gap-4"><Loader2 size={40} className="text-indigo-500 animate-spin" /><p>Procesando...</p></div>
+                  ) : result ? (
+                    <ResultCard res={result} />
+                  ) : (
+                    <div className={`py-12 text-center text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Captura y procesa para ver el resultado</div>
                   )}
                 </div>
-              </div>
-
-              <div className={`rounded-2xl border p-4 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
-                }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Frames capturados
-                    <span className={`ml-2 text-xs font-normal ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      ({frames.length} {frames.length === 1 ? 'frame' : 'frames'})
-                    </span>
-                  </h3>
-                  {frames.length > 0 && (
-                    <div className="flex gap-1">
-                      <button onClick={() => scrollCarousel('left')} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
-                        <ChevronLeft size={18} />
-                      </button>
-                      <button onClick={() => scrollCarousel('right')} className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {frames.length === 0 ? (
-                  <div className={`py-8 text-center text-sm font-medium ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
-                    Los frames capturados aparecerán aquí
-                  </div>
-                ) : (
-                  <div ref={carouselRef} className="flex gap-3 overflow-x-auto scrollbar-thin pb-2" style={{ scrollbarWidth: 'thin' }}>
-                    {frames.map((frame, index) => (
-                      <div key={index} className="flex-shrink-0 relative group">
-                        <img src={frame} alt={`Frame ${index + 1}`} className={`w-24 h-18 object-cover rounded-xl border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`} />
-                        <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-sm text-[10px] text-white font-bold px-1.5 py-0.5 rounded-md">
-                          {index + 1}
-                        </div>
-                        <button onClick={() => setFrames((prev) => prev.filter((_, i) => i !== index))} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg cursor-pointer">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button onClick={toggleCamera} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${cameraOn ? theme === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : theme === 'dark' ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
-                  {cameraOn ? <><CameraOff size={18} /> Apagar cámara</> : <><Camera size={18} /> Encender cámara</>}
-                </button>
-
-                {mode === 'sequence' ? (
-                  <button onClick={handleSequenceCapture} disabled={!cameraOn} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'} disabled:shadow-none border-none`}>
-                    <CircleDot size={18} /> Capturar
-                  </button>
-                ) : (
-                  <button onClick={isCapturing ? stopCapture : startVideoCapture} disabled={!cameraOn && !isCapturing} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${isCapturing ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25' : theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-indigo-600/20' : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-indigo-600/20'} disabled:shadow-none border-none`}>
-                    {isCapturing ? <><Square size={18} /> Detener ({captureCountdown}s)</> : <><CircleDot size={18} /> Iniciar captura</>}
-                  </button>
-                )}
-
-                <button onClick={processFrames} disabled={processing || frames.length === 0} className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium text-sm transition-all shadow-lg cursor-pointer ${theme === 'dark' ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-800 disabled:text-gray-600 shadow-purple-600/20' : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 shadow-purple-600/20'} disabled:shadow-none border-none`}>
-                  {processing ? <><Loader2 size={18} className="animate-spin" /> Procesando...</> : <><Zap size={18} /> Procesar</>}
-                </button>
-
-                <button onClick={clearFrames} disabled={frames.length === 0} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border cursor-pointer ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700 disabled:bg-gray-900 disabled:text-gray-700 disabled:border-gray-800' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 shadow-sm disabled:shadow-none'}`}>
-                  <Trash2 size={18} /> Limpiar
-                </button>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1">
-              <div className={`rounded-2xl border p-6 sticky top-24 transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-                <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  <Zap size={20} className="text-indigo-500" /> Resultado
-                </h3>
-
-                {processing ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-4">
-                    <Loader2 size={40} className="text-indigo-500 animate-spin" />
-                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Procesando frames con IA...
-                    </p>
-                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                      <div className="bg-indigo-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
-                    </div>
-                  </div>
-                ) : result ? (
-                  <div className="space-y-5">
-                    <div className={`border rounded-xl p-6 text-center relative ${theme === 'dark' ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-indigo-500/30' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-inner'}`}>
-                      <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-600'}`}>Traducción</p>
-                      <div className="flex items-center justify-center gap-3">
-                        <p className={`text-4xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{result.resultado}</p>
-                        <button onClick={() => speak(result.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-indigo-400 hover:text-white hover:bg-indigo-500/30' : 'text-indigo-600 hover:bg-indigo-200'}`} title="Escuchar respuesta">
-                          <Volume2 size={24} />
-                        </button>
-                        <button onClick={() => openSignModal(result.resultado)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:text-white hover:bg-purple-500/30' : 'text-purple-600 hover:bg-purple-200'}`} title="Ver traducción en señas">
-                          <Hand size={24} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getTypeColor(result.tipo)}`}>{result.tipo}</span>
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getConfidenceColor(result.confianza)}`}>Confianza: {result.confianza}</span>
-                    </div>
-
-                    {result.analisis_movimiento && (
-                      <div className={`border rounded-xl p-5 mt-4 ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-50 border-gray-200'}`}>
-                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                          <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                          Razonamiento de la IA
-                        </p>
-                        <p className={`text-sm leading-relaxed italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>"{result.analisis_movimiento}"</p>
-                      </div>
-                    )}
-
-                    {result.alternativas && result.alternativas.length > 0 && (
-                      <div>
-                        <p className={`text-sm font-bold mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Alternativas</p>
-                        <div className="space-y-2">
-                          {result.alternativas.map((alt, index) => (
-                            <div key={index} className={`flex items-center justify-between border rounded-lg px-4 py-2.5 ${theme === 'dark' ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
-                              <div className="flex items-center gap-3">
-                                <CheckCircle size={16} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
-                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{alt.seña}</span>
-                              </div>
-                              <button onClick={() => speak(alt.seña)} className={`p-1.5 rounded-md transition-colors cursor-pointer ${theme === 'dark' ? 'text-gray-400 hover:text-indigo-400 hover:bg-gray-700' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                                <Volume2 size={16} />
-                              </button>
-                              <button onClick={() => openSignModal(alt.seña)} className={`p-2 rounded-full transition-all cursor-pointer ${theme === 'dark' ? 'text-purple-400 hover:text-white hover:bg-purple-500/30' : 'text-purple-600 hover:bg-purple-200'}`} title="Ver traducción en señas">
-                                <Hand size={24} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3">
-                    <div className={`p-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                      <Zap size={32} className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} />
-                    </div>
-                    <p className={`text-sm font-medium text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Los resultados aparecerán aquí
-                      <br />después de procesar los frames
-                    </p>
-                    {!user && (
-                      <p className="text-indigo-500 text-xs font-bold text-center mt-2">Inicia sesión para procesar</p>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
         )}
-      </main>
 
-      {/* ═══════════ SECCIÓN EDUCATIVA ═══════════ */}
-      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t ${theme === 'dark' ? 'border-gray-900' : 'border-gray-200'
-        }`}>
-        <div className="text-center mb-16">
-          <h2 className={`text-3xl md:text-4xl font-extrabold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Aprende sobre la LSM
-          </h2>
-          <p className={`max-w-2xl mx-auto text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            La Lengua de Señas Mexicana es más que solo manos; es cultura, identidad y gramática propia.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-indigo-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-indigo-300'
-            }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-indigo-600/20' : 'bg-indigo-100'
-              }`}>
-              <Layers size={28} className={theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'} />
-            </div>
-            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dactilología</h3>
-            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Es el abecedario manual. Se utiliza para deletrear nombres propios, lugares o palabras que no tienen una seña específica. Es el primer paso para cualquier aprendiz.
-            </p>
-          </div>
-
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-purple-300'
-            }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-purple-600/20' : 'bg-purple-100'
-              }`}>
-              <Hand size={28} className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'} />
-            </div>
-            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ideogramas</h3>
-            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              A diferencia del deletreo, una sola seña representa un concepto o palabra completa (ej. "Casa", "Familia"). Estas señas involucran configuración, movimiento y gesticulación.
-            </p>
-          </div>
-
-          <div className={`p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-1 group ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800 hover:border-pink-500/50' : 'bg-white border-gray-200 shadow-md hover:shadow-xl hover:border-pink-300'
-            }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${theme === 'dark' ? 'bg-pink-600/20' : 'bg-pink-100'
-              }`}>
-              <ShieldCheck size={28} className={theme === 'dark' ? 'text-pink-400' : 'text-pink-600'} />
-            </div>
-            <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mitos Comunes</h3>
-            <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              La lengua de señas NO es universal. Cada país tiene la suya (LSM en México, LSE en España, ASL en EE.UU.). Tampoco es una mímica simplificada, es un idioma completo.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════ FORMULARIO DE COMUNIDAD ═══════════ */}
-      <section className="max-w-4xl mx-auto px-4 pb-24">
-        <div className={`rounded-[2.5rem] p-8 md:p-12 border relative overflow-hidden transition-colors ${theme === 'dark'
-            ? 'bg-gradient-to-br from-gray-900 to-indigo-900/20 border-indigo-500/20'
-            : 'bg-gradient-to-br from-white to-indigo-50/50 border-indigo-200 shadow-2xl shadow-indigo-100/50'
-          }`}>
-          <div className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl ${theme === 'dark' ? 'bg-indigo-600/10' : 'bg-indigo-300/30'
-            }`} />
-
-          <div className="relative z-10">
-            <h2 className={`text-3xl font-extrabold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Queremos conocerte
-            </h2>
-            <p className={`mb-10 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Ayúdanos a mejorar HandsTranslator respondiendo estas breves preguntas.
-            </p>
-
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const payload = Object.fromEntries(formData.entries());
-
-                if (!user) {
-                  alert('Debes iniciar sesión para enviar tus comentarios.');
-                  setAuthModalOpen(true);
-                  return;
-                }
-
-                try {
-                  const { error } = await supabase.functions.invoke('form', { body: payload });
-                  if (error) throw error;
-                  alert('¡Gracias! Tus respuestas se han guardado correctamente.');
-                  (e.target as HTMLFormElement).reset();
-                } catch (err: any) {
-                  console.error('Error al enviar formulario:', err);
-                  alert('Hubo un error al enviar tus respuestas. Por favor, intenta más tarde.');
-                }
-              }}
-              className="space-y-8"
-            >
-              <div className="space-y-4">
-                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                  ¿Tienes algún familiar que use lengua de señas?
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {['Sí, cercano', 'Sí, lejano', 'No'].map((opcion) => (
-                    <label key={opcion} className="relative">
-                      <input type="radio" name="familiar" value={opcion} className="peer sr-only" required />
-                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${theme === 'dark'
-                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700'
-                          : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
-                        }`}>
-                        {opcion}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                  ¿Cuál es tu nivel de conocimiento en LSM?
-                </label>
-                <select name="nivel" className={`w-full border rounded-xl p-3.5 text-sm font-medium outline-none transition-colors cursor-pointer ${theme === 'dark'
-                    ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500'
-                    : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 shadow-sm'
-                  }`}>
-                  <option value="ninguno">Ninguno</option>
-                  <option value="basico">Básico (Abecedario)</option>
-                  <option value="intermedio">Intermedio (Conversación fluida)</option>
-                  <option value="avanzado">Avanzado / Intérprete</option>
-                </select>
-              </div>
-
-              <div className="space-y-4">
-                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                  ¿Conoces a alguien que le pueda resultar útil esta página?
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {['Sí, mucho', 'Tal vez alguien'].map((opcion) => (
-                    <label key={opcion} className="relative">
-                      <input type="radio" name="utilidad" value={opcion} className="peer sr-only" />
-                      <div className={`p-3 text-center text-sm font-medium border rounded-xl cursor-pointer transition-all ${theme === 'dark'
-                          ? 'bg-gray-800 border-gray-700 text-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-700'
-                          : 'bg-white border-gray-300 text-gray-700 peer-checked:bg-indigo-500 peer-checked:text-white peer-checked:border-indigo-500 hover:bg-gray-50 shadow-sm'
-                        }`}>
-                        {opcion}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className={`text-sm font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                  ¿Qué otra función te gustaría ver?
-                </label>
-                <textarea
-                  name="sugerencia"
-                  rows={3}
-                  placeholder="Ej: Diccionario visual, curso básico..."
-                  className={`w-full border rounded-xl p-4 text-sm font-medium outline-none transition-colors ${theme === 'dark'
-                      ? 'bg-gray-800 border-gray-700 text-white focus:border-indigo-500 placeholder-gray-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 placeholder-gray-400 shadow-sm'
-                    }`}
+        {/* ── MODO: CONVERSACIÓN (Pantalla Dividida) ── */}
+        {mode === 'conversation' && (
+          <div className="flex flex-col md:flex-row gap-4 h-[70vh] min-h-[600px]">
+            {/* Lado Oyente (Texto a Señas) */}
+            <div className={`flex-1 rounded-2xl border p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}><Keyboard size={16}/> Escribe para mostrar señas</h3>
+              <div className="flex gap-2 mb-4">
+                <input 
+                  type="text" value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTextToSign()}
+                  placeholder="Escribe aquí..." 
+                  className={`flex-1 border rounded-xl p-3 text-sm outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`}
                 />
+                <button onClick={handleTextToSign} className="bg-indigo-600 text-white px-4 rounded-xl font-bold">Traducir</button>
               </div>
+              <div className={`flex-1 rounded-xl border flex items-center justify-center p-4 overflow-hidden ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+                {playlist.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto w-full items-center pb-2">
+                    {playlist.map((item, i) => !item.isSpace && (
+                      <div key={i} className="flex-col items-center flex-shrink-0"><img src={item.url} className="w-24 h-24 object-cover rounded-lg bg-white" /><span className="text-center font-bold mt-1 block">{item.label}</span></div>
+                    ))}
+                  </div>
+                ) : <p className="opacity-50 text-sm">El texto en señas aparecerá aquí</p>}
+              </div>
+            </div>
 
-              <button
-                type="submit"
-                className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg cursor-pointer ${theme === 'dark'
-                    ? 'bg-white text-gray-950 hover:bg-gray-100 shadow-white/10'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/25'
-                  }`}
-              >
-                Enviar respuestas
-              </button>
-            </form>
+            {/* Separador Visual */}
+            <div className="hidden md:flex flex-col items-center justify-center text-gray-300 dark:text-gray-700"><div className="w-px h-full bg-current"></div><MessageCircle className="my-2" /><div className="w-px h-full bg-current"></div></div>
+
+            {/* Lado Sordo (Cámara a Texto) */}
+            <div className={`flex-1 rounded-2xl border p-6 flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+              <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}><Camera size={16}/> Graba para mostrar texto</h3>
+              <div className="mb-4"><CameraView showControls={false} /></div>
+              <div className="flex gap-2 mb-4">
+                <button onClick={handleSequenceCapture} disabled={!cameraOn} className="flex-1 bg-purple-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Capturar</button>
+                <button onClick={processFrames} disabled={processing || frames.length===0} className="flex-1 bg-indigo-600 text-white py-2 rounded-xl font-bold disabled:opacity-50">Traducir</button>
+                <button onClick={toggleCamera} className="px-4 border rounded-xl dark:border-gray-700"><Camera size={20} className={cameraOn ? 'text-red-500' : ''}/></button>
+              </div>
+              <div className={`p-4 rounded-xl text-center border min-h-[100px] flex items-center justify-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-indigo-50 border-indigo-100'}`}>
+                {processing ? <Loader2 className="animate-spin text-indigo-500"/> : result ? (
+                  <div>
+                    <p className="text-3xl font-extrabold">{result.resultado}</p>
+                    <button onClick={() => speak(result.resultado)} className="mt-2 text-indigo-500"><Volume2/></button>
+                  </div>
+                ) : <p className="opacity-50 text-sm">La traducción de la cámara aparecerá aquí</p>}
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* ═══════════ FOOTER ═══════════ */}
-      <footer className={`border-t py-12 text-center transition-colors ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-        }`}>
-        <div className="flex justify-center gap-6 mb-6">
-          <Hand className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
-          <ShieldCheck className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
-          <Layers className={theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} size={24} />
-        </div>
-        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-          © 2026 HandsTranslator. Tecnología con impacto social.
-        </p>
-      </footer>
-
-      {/* ═══════════ AUTH MODAL ═══════════ */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-      />
-
-      {/* ═══════════ PROFILE MODAL ═══════════ */}
-      <ProfileModal
-        isOpen={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
-        user={user}
-      />
-
-      {/* ═══════════ SIGN TRANSLATION MODAL ═══════════ */}
-      {signModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`relative w-full max-w-4xl rounded-2xl p-6 md:p-8 shadow-2xl ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
-            <button 
-              onClick={() => setSignModalOpen(false)} 
-              className={`absolute top-4 right-4 p-2 rounded-full transition-colors cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}
-            >
-              <X size={24} />
-            </button>
-            
-            <h2 className={`text-2xl font-bold mb-6 flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              <Hand className="text-purple-500" /> Traducción a señas
-            </h2>
-
-            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-              <div className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center" style={{ scrollbarWidth: 'thin' }}>
-                {modalPlaylist.map((item, index) => (
-                  item.isSpace ? (
-                    <div key={index} className={`flex-shrink-0 w-12 md:w-16 h-32 md:h-40 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 ${theme === 'dark' ? 'border-gray-500' : 'border-gray-400'}`}>
-                      <span className={`text-[10px] uppercase font-bold tracking-widest rotate-90 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Espacio
-                      </span>
-                    </div>
-                  ) : (
-                    <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border transition-all hover:-translate-y-1 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-purple-500/50' : 'bg-white border-gray-200 shadow-sm hover:border-purple-300 hover:shadow-md'}`}>
-                      <img src={item.url} alt={`Seña para ${item.label}`} className={`w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`} />
-                      <span className={`mt-3 font-extrabold text-lg uppercase tracking-wider ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
-                        {item.label}
-                      </span>
-                    </div>
-                  )
+        {/* ── MODO: TEXTO A SEÑAS ── */}
+        {mode === 'text' && (
+          <div className={`rounded-2xl border p-8 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <QuickPhrases />
+            <div className="flex gap-3 mb-8">
+              <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()} placeholder="Escribe para traducir..." className={`flex-1 border rounded-xl p-4 outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`} />
+              <button onClick={handleTextToSign} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold">Traducir</button>
+            </div>
+            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex gap-4 overflow-x-auto w-full pb-4 items-center">
+                {playlist.map((item, index) => item.isSpace ? (
+                  <div key={index} className="w-12 h-32 border-2 border-dashed opacity-40 rounded-xl" />
+                ) : (
+                  <div key={index} className={`flex flex-col items-center p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    <img src={item.url} className="w-32 h-32 object-cover rounded-lg" />
+                    <span className="mt-3 font-bold text-lg">{item.label}</span>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── MODO: DICCIONARIO VISUAL ── */}
+        {mode === 'dictionary' && (
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold">Diccionario de Aprendizaje</h2>
+              <p className="opacity-70">Haz clic en cualquier palabra para ver su seña</p>
+            </div>
+            {DICCIONARIO_CATEGORIAS.map((cat, i) => (
+              <div key={i} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-indigo-500"/> {cat.nombre}</h3>
+                <div className="flex flex-wrap gap-3">
+                  {cat.palabras.map((palabra, j) => (
+                    <button key={j} onClick={() => openSignModal(palabra)} className={`px-4 py-3 rounded-xl font-bold border transition-all hover:scale-105 ${theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:border-indigo-500' : 'bg-gray-50 border-gray-200 hover:border-indigo-300'}`}>
+                      {palabra}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </main>
+
+      {/* ═══════════ HISTORIAL SIDEBAR (Overlay) ═══════════ */}
+      {showHistory && (
+        <div className="fixed inset-y-0 right-0 w-full sm:w-96 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
+          <div className={`w-full sm:w-96 h-full p-6 shadow-2xl flex flex-col ${theme === 'dark' ? 'bg-gray-900 border-l border-gray-800' : 'bg-white border-l border-gray-200'}`}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2"><History/> Historial Offline</h3>
+              <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-gray-500/20"><X size={20}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {history.length === 0 ? <p className="text-center opacity-50 mt-10">No hay traducciones recientes.</p> : history.map((h, i) => (
+                <div key={i} className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                  <p className="text-xs opacity-50 mb-1">{new Date(h.timestamp || Date.now()).toLocaleTimeString()}</p>
+                  <p className="text-lg font-bold mb-2">{h.resultado}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => speak(h.resultado)} className="p-1.5 rounded-md bg-indigo-500/10 text-indigo-500"><Volume2 size={16}/></button>
+                    <button onClick={() => openSignModal(h.resultado)} className="p-1.5 rounded-md bg-purple-500/10 text-purple-500"><Hand size={16}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* ═══════════ SIGN TRANSLATION MODAL (Con control de velocidad) ═══════════ */}
+      {signModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className={`relative w-full max-w-4xl rounded-2xl p-6 md:p-8 shadow-2xl ${theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`text-2xl font-bold flex items-center gap-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Hand className="text-purple-500" /> Traducción</h2>
+              <div className="flex items-center gap-4">
+                {/* Control de Velocidad (Visual) */}
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                  <Gauge size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                  <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none cursor-pointer">
+                    <option value={0.5}>0.5x (Lento)</option>
+                    <option value={1}>1x (Normal)</option>
+                    <option value={1.5}>1.5x (Rápido)</option>
+                  </select>
+                </div>
+                <button onClick={() => setSignModalOpen(false)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24} /></button>
+              </div>
+            </div>
+
+            <div className={`rounded-xl border p-6 min-h-[300px] flex items-center transition-colors ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+              <div ref={modalCarouselRef} className="flex gap-4 overflow-x-auto w-full pb-4 scrollbar-thin items-center transition-transform" style={{ transitionDuration: `${1 / playbackSpeed}s` }}>
+                {modalPlaylist.map((item, index) => item.isSpace ? (
+                  <div key={index} className="flex-shrink-0 w-12 md:w-16 h-32 mx-2 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40"><span className="text-[10px] rotate-90 uppercase">Espacio</span></div>
+                ) : (
+                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-3 rounded-xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    {/* Truco CSS para aplicar velocidad a la vista si usas animaciones, pero aquí lo dejamos estático para GIFs */}
+                    <img src={item.url} alt={item.label} className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-lg bg-white" style={{ animationDuration: `${1 / playbackSpeed}s` }} />
+                    <span className="mt-3 font-extrabold text-lg">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Controles de auto-scroll guiado por velocidad */}
+            <div className="mt-4 flex justify-center gap-4">
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'left')} className="p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"><ChevronLeft/></button>
+              <button onClick={() => scrollCarousel(modalCarouselRef, 'right')} className="p-3 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20"><ChevronRight/></button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} user={user} />
     </div>
   )
 }
