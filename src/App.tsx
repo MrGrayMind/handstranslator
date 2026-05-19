@@ -182,6 +182,15 @@ export default function App() {
 
   const toggleCamera = () => cameraOn ? stopCamera() : startCamera()
 
+  useEffect(() => {
+    if (cameraOn && videoRef.current && streamRef.current) {
+      // Si el elemento de video actual no tiene el stream asignado, se lo volvemos a poner
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current
+      }
+    }
+  }, [mode, cameraOn])
+
   // Atajos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
