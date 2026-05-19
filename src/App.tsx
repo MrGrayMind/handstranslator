@@ -707,7 +707,7 @@ export default function App() {
                 {playlist.length > 0 ? (
                   <div className="flex gap-4 overflow-x-auto w-full items-center pb-2 scrollbar-thin">
                     {playlist.map((item, i) => !item.isSpace && (
-                      <div key={i} className="flex flex-col items-center flex-shrink-0">
+                      <div key={i} className="relative flex-none min-w-fit flex flex-col items-center">
                         <img src={item.url} className="w-24 h-24 object-contain rounded-lg bg-white p-1 border" alt={item.label} />
                         <span className="text-center font-extrabold mt-2 block text-sm uppercase">{item.label}</span>
                       </div>
@@ -926,7 +926,10 @@ export default function App() {
             {/* CAMBIO: Se redujo el padding interno de p-6 a p-3 md:p-4 y el min-h para ganar espacio vertical */}
             <div className={`rounded-xl border p-3 md:p-4 min-h-[240px] flex items-center transition-colors ${theme === 'dark' ? 'bg-black/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
               {/* CAMBIO: Reducido el gap de 4 a 3 y ajustado el padding inferior a pb-2 */}
-              <div ref={modalCarouselRef} className="flex gap-3 overflow-x-auto w-full pb-2 scrollbar-thin items-center transition-transform" style={{ transitionDuration: `${1 / playbackSpeed}s` }}>
+              <div
+                ref={modalCarouselRef}
+                className="flex flex-nowrap gap-3 overflow-x-auto overflow-y-hidden w-full pb-2 scrollbar-thin items-center"
+              >
                 {modalPlaylist.map((item, index) => item.isSpace ? (
                   /* CAMBIO: Espacio más compacto (w-10 a w-12) */
                   <div key={index} className="flex-shrink-0 w-10 md:w-12 h-32 mx-1 rounded-xl border-2 border-dashed flex items-center justify-center opacity-40 border-gray-400">
