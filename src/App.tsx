@@ -344,8 +344,8 @@ export default function App() {
       if (PALABRAS_DISPONIBLES[word]) {
         newPlaylist.push({ 
         isSpace: false, 
-        url: getSignUrl(DICCIONARIO[word][0]), // URL construida al vuelo
-        variants: DICCIONARIO[word].map(getSignUrl), // Arreglo de URLs completas
+        url: getSignUrl(PALABRAS_DISPONIBLES[word][0]), // URL construida al vuelo
+        variants: PALABRAS_DISPONIBLES[word].map(getSignUrl), // Arreglo de URLs completas
         label: word 
       })
       } else {
