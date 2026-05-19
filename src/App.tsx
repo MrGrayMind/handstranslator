@@ -117,37 +117,37 @@ const FRASES_RAPIDAS = [
 ]
 
 const DICCIONARIO_CATEGORIAS = [
-  { 
-    nombre: 'Básico', 
-    palabras: ['HOLA', 'ADIOS', 'GRACIAS', 'POR FAVOR', 'PERDON', 'SI', 'NO', 'BIEN', 'MAL'] 
+  {
+    nombre: 'Básico',
+    palabras: ['HOLA', 'ADIOS', 'GRACIAS', 'POR FAVOR', 'PERDON', 'SI', 'NO', 'BIEN', 'MAL']
   },
-  { 
-    nombre: 'Preguntas', 
-    palabras: ['QUE', 'QUIEN', 'COMO', 'CUANDO', 'DONDE', 'POR QUE'] 
+  {
+    nombre: 'Preguntas',
+    palabras: ['QUE', 'QUIEN', 'COMO', 'CUANDO', 'DONDE', 'POR QUE']
   },
-  { 
-    nombre: 'Emergencia', 
-    palabras: ['AYUDA', 'MEDICO', 'HOSPITAL', 'POLICIA', 'DOLOR', 'FUEGO', 'AMBULANCIA'] 
+  {
+    nombre: 'Emergencia',
+    palabras: ['AYUDA', 'MEDICO', 'HOSPITAL', 'POLICIA', 'DOLOR', 'FUEGO', 'AMBULANCIA']
   },
-  { 
-    nombre: 'Familia', 
-    palabras: ['MAMA', 'PAPA', 'HERMANO', 'HIJO', 'ABUELO', 'TIO', 'PRIMO'] 
+  {
+    nombre: 'Familia',
+    palabras: ['MAMA', 'PAPA', 'HERMANO', 'HIJO', 'ABUELO', 'TIO', 'PRIMO']
   },
-  { 
-    nombre: 'Emociones', 
-    palabras: ['FELIZ', 'TRISTE', 'ENOJADO', 'CANSADO', 'MIEDO', 'SORPRESA'] 
+  {
+    nombre: 'Emociones',
+    palabras: ['FELIZ', 'TRISTE', 'ENOJADO', 'CANSADO', 'MIEDO', 'SORPRESA']
   },
-  { 
-    nombre: 'Tiempo', 
-    palabras: ['HOY', 'AYER', 'MAÑANA', 'AHORA', 'DESPUES', 'TARDE', 'NOCHE'] 
+  {
+    nombre: 'Tiempo',
+    palabras: ['HOY', 'AYER', 'MAÑANA', 'AHORA', 'DESPUES', 'TARDE', 'NOCHE']
   },
-  { 
-    nombre: 'Comida', 
-    palabras: ['AGUA', 'COMER', 'HAMBRE', 'SED', 'PAN', 'LECHE'] 
+  {
+    nombre: 'Comida',
+    palabras: ['AGUA', 'COMER', 'HAMBRE', 'SED', 'PAN', 'LECHE']
   },
-  { 
-    nombre: 'Identidad y Escuela', 
-    palabras: ['SORDO', 'OYENTE', 'APRENDER', 'ESCUELA', 'MAESTRO', 'NOMBRE'] 
+  {
+    nombre: 'Identidad y Escuela',
+    palabras: ['SORDO', 'OYENTE', 'APRENDER', 'ESCUELA', 'MAESTRO', 'NOMBRE']
   }
 ]
 
@@ -391,7 +391,7 @@ export default function App() {
     for (let i = 0; i < words.length; i++) {
       const word = words[i]
       if (!word) continue
-      
+
       if (PALABRAS_DISPONIBLES[word]) {
         // 1. Es una palabra registrada en el diccionario
         newPlaylist.push({
@@ -419,7 +419,7 @@ export default function App() {
           }
         }
       }
-      
+
       // Agregamos el bloque de espacio entre palabras
       if (i < words.length - 1) newPlaylist.push({ isSpace: true, url: '', label: '' })
     }
@@ -916,22 +916,41 @@ export default function App() {
 
         {/* ── MODO: TEXTO A SEÑAS ── */}
         {mode === 'text' && (
-          <div className={`rounded-2xl border p-8 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+          <div className={`rounded-2xl border p-5 md:p-8 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
             <QuickPhrases />
-            <div className="flex gap-3 mb-8">
-              <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()} placeholder="Escribe para traducir..." className={`flex-1 border rounded-xl p-4 outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`} />
-              <button onClick={handleTextToSign} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer hover:bg-indigo-700 transition-colors">Traducir</button>
-              <button
-                onClick={() => speak(inputText)}
-                disabled={!inputText.trim()}
-                className={`px-5 py-4 rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50 ${theme === 'dark'
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'bg-purple-600 hover:bg-purple-700 text-white'
-                  }`}
-                title="Reproducir texto"
-              >
-                <Volume2 size={22} />
-              </button>
+
+            {/* AQUÍ ESTÁ LA MAGIA RESPONSIVA: flex-col en celular, flex-row en tablets/desktop */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleTextToSign()}
+                placeholder="Escribe para traducir..."
+                className={`w-full sm:flex-1 border rounded-xl p-4 outline-none ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-300'}`}
+              />
+
+              {/* Contenedor extra para que los botones convivan bien en celular */}
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleTextToSign}
+                  className="flex-1 sm:flex-none px-6 py-4 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer hover:bg-indigo-700 transition-colors"
+                >
+                  Traducir
+                </button>
+                <button
+                  onClick={() => speak(inputText)}
+                  disabled={!inputText.trim()}
+                  className={`px-5 py-4 rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50 ${theme === 'dark'
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  title="Reproducir texto"
+                >
+                  <Volume2 size={22} />
+                </button>
+              </div>
             </div>
             <div className={`rounded-xl border p-6 min-h-[300px] flex items-center ${theme === 'dark' ? 'bg-black/40 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex gap-4 overflow-x-auto w-full pb-4 items-center scrollbar-thin">
@@ -944,7 +963,7 @@ export default function App() {
                     key={index}
                     onClick={() => rotatePlaylistVariant(index)}
                     title={item.variants && item.variants.length > 1 ? 'Click para cambiar variante' : undefined}
-                    
+
                     className={`relative flex-none flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${theme === 'dark'
                       ? 'bg-gray-800 border-gray-700 hover:border-indigo-500'
                       : 'bg-white border-gray-200 shadow-sm hover:border-indigo-400'
