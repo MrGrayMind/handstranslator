@@ -129,7 +129,6 @@ export default function App() {
   const [history, setHistory] = useState<TranslationResult[]>([]) // Historial offline
   const [showHistory, setShowHistory] = useState(false)
   const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null)
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1) // Control de velocidad
 
   // ── Estados para Texto a Señas ──
   interface SignItem {
