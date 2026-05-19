@@ -923,22 +923,22 @@ export default function App() {
                     <span className="text-[9px] rotate-90 uppercase font-bold tracking-wider">Espacio</span>
                   </div>
                 ) : (
-                  <div key={index} className="flex flex-col items-center">
-                    <div className="relative group">
-                      <img 
-                        src={item.url} 
-                        className="w-40 h-40 object-contain rounded-lg bg-white p-1 border" 
-                        alt={item.label} 
-                      />
-                      
-                      {/* Si tiene variantes, mostramos un pequeño indicador */}
-                      {item.variants && item.variants.length > 1 && (
-                        <div className="absolute bottom-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">
-                          {item.variants.length} v.
-                        </div>
-                      )}
-                    </div>
-                    <span className="mt-2 font-extrabold">{item.label}</span>
+                  /* CAMBIO: Tarjetas optimizadas (p-2), responsivas y con flex-shrink-0 absoluto */
+                  <div key={index} className={`flex flex-col items-center flex-shrink-0 p-2 rounded-xl border transition-all hover:-translate-y-0.5 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    {/* Imágenes responsivas: más compactas en móvil y tamaño completo en pantallas grandes */}
+                    <img 
+                      src={item.url} 
+                      alt={item.label} 
+                      className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 object-contain rounded-lg bg-white p-1" 
+                      style={{ animationDuration: `${1 / playbackSpeed}s` }} 
+                    />
+                    {/* Si tiene variantes, mostramos un pequeño indicador */}
+                    {item.variants && item.variants.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                        {item.variants.length} v.
+                      </div>
+                    )}
+                    <span className="mt-2 font-extrabold text-sm md:text-base uppercase tracking-wider">{item.label}</span>
                   </div>
                 ))}
               </div>
