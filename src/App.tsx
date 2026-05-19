@@ -53,6 +53,14 @@ interface UserLimits {
   max_duration_s: number
 }
 
+const NUMEROS_DISPONIBLES = [
+  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+  "25", "30", "40", "50", "60", "70", "80", "90", "100",
+  "200", "300", "400", "500", "600", "700", "800", "900",
+  "1000", "2000", "3000"
+]
+
 const PALABRAS_DISPONIBLES: Record<string, string[]> = {
   "YO": ["YO", "YO_2"],
   "USTED": ["USTED"],
@@ -370,25 +378,44 @@ export default function App() {
   // ════════════════════════════════════════════
   const generatePlaylistFromText = (text: string) => {
     if (!text.trim()) return []
+    // La expresión regular /[^\w\s]/gi elimina puntuación pero MANTIENE letras y números (\w)
     const cleanText = text.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '')
     const words = cleanText.split(/\s+/)
-    let newPlaylist: { isSpace: boolean; url: string; label: string }[] = []
+    let newPlaylist: { isSpace: boolean; url: string; label: string; variants?: string[]; currentVariant?: number }[] = []
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i]
       if (!word) continue
+      
       if (PALABRAS_DISPONIBLES[word]) {
+        // 1. Es una palabra registrada en el diccionario
         newPlaylist.push({
           isSpace: false,
-          url: getSignUrl(PALABRAS_DISPONIBLES[word][0]), // URL construida al vuelo
-          variants: PALABRAS_DISPONIBLES[word].map(getSignUrl), // Arreglo de URLs completas
+          url: getSignUrl(PALABRAS_DISPONIBLES[word][0]),
+          variants: PALABRAS_DISPONIBLES[word].map(getSignUrl),
+          label: word
+        })
+      } else if (NUMEROS_DISPONIBLES.includes(word)) {
+        // 2. Es un número COMPLETO que sí tenemos (ej. "100", "25", "1000000")
+        newPlaylist.push({
+          isSpace: false,
+          url: `/señas/numeros/${word}.png`,
           label: word
         })
       } else {
-        for (const letter of word) {
-          if (/[A-Z]/.test(letter)) newPlaylist.push({ isSpace: false, url: `/señas/letras/${letter}.png`, label: letter })
+        // 3. Si no es palabra, ni número completo, lo separamos carácter por carácter
+        for (const char of word) {
+          if (/[A-Z]/.test(char)) {
+            // Es una letra
+            newPlaylist.push({ isSpace: false, url: `/señas/letras/${char}.png`, label: char })
+          } else if (/\d/.test(char) && NUMEROS_DISPONIBLES.includes(char)) {
+            // Es un dígito individual (fallback para números como el "21" -> muestra "2" y luego "1")
+            newPlaylist.push({ isSpace: false, url: `/señas/numeros/${char}.png`, label: char })
+          }
         }
       }
+      
+      // Agregamos el bloque de espacio entre palabras
       if (i < words.length - 1) newPlaylist.push({ isSpace: true, url: '', label: '' })
     }
     return newPlaylist
