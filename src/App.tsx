@@ -717,11 +717,8 @@ export default function App() {
                   <div className="flex gap-4 overflow-x-auto w-full items-center pb-2 scrollbar-thin">
                     {playlist.map((item, i) =>
                       item.isSpace ? (
-                        <div
-                          key={i}
-                          className="flex-none w-8 h-24 flex items-center justify-center opacity-40"
-                        >
-                          <div className="w-px h-10 bg-gray-400 rounded-full" />
+                        <div key={i} className="w-16 h-40 flex-shrink-0 border-2 border-dashed opacity-40 rounded-xl flex items-center justify-center">
+                          <span className="text-[10px] rotate-90 uppercase font-bold">Espacio</span>
                         </div>
                       ) : (
                         <div
