@@ -806,7 +806,13 @@ export default function App() {
               {/* FIX 2: flex-1 y overflow-y-auto scrollbar-thin agregados a la caja de resultados */}
               <div className={`p-4 rounded-xl text-center border flex flex-col items-center justify-center transition-colors min-h-[140px] flex-1 overflow-y-auto scrollbar-thin ${theme === 'dark' ? 'bg-gray-800/40 border-gray-700' : 'bg-indigo-50/60 border-indigo-100'}`}>
                 {processing ? (
-                  <Loader2 className="animate-spin text-indigo-500" size={28} />
+                  <div className="flex flex-col items-center gap-3 scale-75 md:scale-90">
+                    <div className="relative">
+                      <Hand size={32} className="text-indigo-500 animate-pulse" />
+                      <div className="absolute inset-0 bg-indigo-400 blur-xl animate-ping opacity-50"></div>
+                    </div>
+                    <p className="text-xs font-bold text-indigo-400 animate-pulse uppercase tracking-wider">Analizando...</p>
+                  </div>
                 ) : result ? (
                   <div className="w-full space-y-3 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-center gap-3">
@@ -1002,7 +1008,7 @@ export default function App() {
                   ) : (
                     <div
                       key={index}
-                      onClick={() => rotatePlaylistVariant(index)}
+                      onClick={() => rotateModalVariant(index)}
                       className={`relative flex-none w-[180px] flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]`}
                     >
                       <img
